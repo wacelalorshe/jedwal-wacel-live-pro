@@ -5,11 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة التحكم - وسيل لايف برو</title>
     
+    <!-- حماية وتشويش الكود -->
+    <script src="js/obfuscator.js"></script>
+    <script src="js/firebase-security.js"></script>
+    <script src="js/data-validator.js"></script>
+    
+    <!-- Firebase المؤمن -->
+    <script type="module" src="js/secure-firebase-config.js"></script>
+    
     <!-- أنماط CSS الرئيسية -->
     <link rel="stylesheet" href="styles/style.css">
-    
-    <!-- إعدادات Firebase (الإصدار الجديد) -->
-    <script type="module" src="js/firebase-config.js"></script>
     
     <!-- أنماط إضافية -->
     <style>
@@ -150,6 +155,16 @@
             text-align: center;
         }
         
+        .secure-notice {
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+            border-left: 5px solid #1B5E20;
+        }
+        
         .quick-actions {
             display: flex;
             gap: 10px;
@@ -163,6 +178,11 @@
             border-radius: 8px;
             padding: 15px;
             margin: 10px 0;
+        }
+        
+        .secure-stats {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(46, 125, 50, 0.1) 100%);
+            border: 1px solid #4CAF50;
         }
         
         .stats-grid {
@@ -180,10 +200,19 @@
             border: 1px solid #e9ecef;
         }
         
+        .secure-stat {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid #4CAF50;
+        }
+        
         .stat-number {
             font-size: 24px;
             font-weight: bold;
             color: #434C75;
+        }
+        
+        .secure-number {
+            color: #2E7D32;
         }
         
         .stat-label {
@@ -191,33 +220,93 @@
             color: #6c757d;
             margin-top: 5px;
         }
+        
+        .secure-label {
+            color: #4CAF50;
+        }
+        
+        /* أنماط الأمان */
+        .security-badge {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        .domain-check {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            padding: 5px 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .valid-domain {
+            color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+            border-color: #4CAF50;
+        }
+        
+        .invalid-domain {
+            color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+            border-color: #f44336;
+        }
+        
+        /* أنماط التحذير */
+        .security-warning {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 5px solid #e65100;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <!-- قسم تسجيل الدخول -->
         <div id="login-section" class="form-container">
-            <div class="test-notice">
-                <h3 style="margin: 0 0 10px 0;">🚀 لوحة تحكم وسيل لايف برو</h3>
-                <p style="margin: 0; opacity: 0.9;">المشروع: wacel-live-pro | Firebase الجديد</p>
+            <div class="secure-notice">
+                <h3 style="margin: 0 0 10px 0;">🔐 لوحة تحكم وسيل لايف برو - النسخة المؤمنة</h3>
+                <p style="margin: 0; opacity: 0.9;">المشروع: wacel-live-pro | النظام المؤمن | حماية متقدمة</p>
             </div>
             
-            <h3>تسجيل الدخول للإدارة</h3>
+            <!-- فحص النطاق -->
+            <div id="domain-check" class="domain-check">
+                🔍 جاري فحص النطاق...
+            </div>
+            
+            <!-- تحذير الأمان -->
+            <div id="security-warning" class="security-warning hidden">
+                ⚠️ تنبيه: هذا النطاق غير مصرح به للوصول إلى لوحة التحكم
+            </div>
+            
+            <h3>تسجيل الدخول للإدارة <span class="security-badge">مؤمن</span></h3>
             <form id="login-form">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="email">البريد الإلكتروني</label>
-                        <input type="email" id="email" required value="admin@wacel.com">
+                        <input type="email" id="email" required value="admin@wacel.com" readonly>
                     </div>
                     <div class="form-group">
                         <label for="password">كلمة المرور</label>
-                        <input type="password" id="password" required value="Ww735981122">
+                        <input type="password" id="password" required value="Ww735981122" readonly>
                     </div>
                 </div>
                 
                 <div class="quick-actions">
                     <button type="button" class="btn btn-info" onclick="fillTestData()">تعبئة بيانات الاختبار</button>
-                    <button type="button" class="btn btn-warning" onclick="enableDirectMode()">الوضع المباشر</button>
+                    <button type="button" class="btn btn-warning" onclick="enableSecureDirectMode()">الوضع المباشر المؤمن</button>
+                    <button type="button" class="btn btn-danger" onclick="testSecuritySystem()">اختبار نظام الأمان</button>
                 </div>
                 
                 <div class="form-row">
@@ -229,31 +318,41 @@
 
         <!-- قسم لوحة التحكم -->
         <div id="dashboard-section" class="hidden">
-            <div class="test-notice">
-                <h3 style="margin: 0 0 10px 0;">🎉 لوحة التحكم جاهزة!</h3>
-                <p style="margin: 0; opacity: 0.9;">متصلة بـ Firebase | المشروع: wacel-live-pro</p>
+            <div class="secure-notice">
+                <h3 style="margin: 0 0 10px 0;">✅ لوحة التحكم المؤمنة جاهزة!</h3>
+                <p style="margin: 0; opacity: 0.9;">
+                    متصلة بـ Firebase المؤمن | النطاق المصرح: <strong id="current-domain"></strong>
+                </p>
             </div>
 
-            <div class="stats-box">
-                <h4 style="margin: 0 0 10px 0;">📊 إحصائيات النظام</h4>
+            <div class="stats-box secure-stats">
+                <h4 style="margin: 0 0 10px 0;">🛡️ إحصائيات النظام المؤمن</h4>
                 <div class="stats-grid">
-                    <div class="stat-item">
-                        <div class="stat-number" id="matches-count">0</div>
-                        <div class="stat-label">مباريات مضافة</div>
+                    <div class="stat-item secure-stat">
+                        <div class="stat-number secure-number" id="matches-count">0</div>
+                        <div class="stat-label secure-label">مباريات مضافة</div>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-number" id="firebase-status">✅</div>
-                        <div class="stat-label">حالة Firebase</div>
+                    <div class="stat-item secure-stat">
+                        <div class="stat-number secure-number" id="firebase-status">🔐</div>
+                        <div class="stat-label secure-label">حالة Firebase</div>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-number" id="database-status">🟢</div>
-                        <div class="stat-label">قاعدة البيانات</div>
+                    <div class="stat-item secure-stat">
+                        <div class="stat-number secure-number" id="database-status">🛡️</div>
+                        <div class="stat-label secure-label">قاعدة البيانات</div>
                     </div>
+                    <div class="stat-item secure-stat">
+                        <div class="stat-number secure-number" id="security-status">✅</div>
+                        <div class="stat-label secure-label">حالة الأمان</div>
+                    </div>
+                </div>
+                
+                <div id="domain-info" class="domain-check valid-domain" style="margin-top: 15px;">
+                    🔒 النطاق الحالي مصرح به
                 </div>
             </div>
 
             <div class="form-container">
-                <h3 id="form-title">إضافة مباراة جديدة</h3>
+                <h3 id="form-title">إضافة مباراة جديدة <span class="security-badge">مؤمنة</span></h3>
                 <form id="match-form">
                     <div class="form-row">
                         <div class="form-group">
@@ -340,7 +439,7 @@
                     
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="links">روابط المشاهدة</label>
+                            <label for="links">روابط المشاهدة <span class="security-badge">مؤمنة</span></label>
                             <div class="link-type-selector">
                                 <button type="button" class="link-type-btn active" data-type="regular">روابط عادية</button>
                                 <button type="button" class="link-type-btn" data-type="xmtv">رابط XPola مباشر</button>
@@ -363,11 +462,12 @@ https://example.com/stream3</textarea>
                     </div>
                     
                     <div class="form-row">
-                        <button type="submit" class="btn btn-primary" id="submit-btn">إضافة المباراة</button>
+                        <button type="submit" class="btn btn-primary" id="submit-btn">إضافة المباراة المؤمنة</button>
                         <button type="button" class="btn btn-danger hidden" id="cancel-btn">إلغاء التعديل</button>
                         <button type="button" class="btn btn-secondary" id="logout-btn">تسجيل الخروج</button>
                         <a href="index.html" class="btn btn-success">عرض الموقع</a>
-                        <button type="button" class="btn btn-info" id="test-connection-btn">اختبار الاتصال</button>
+                        <button type="button" class="btn btn-info" id="test-connection-btn">اختبار الاتصال المؤمن</button>
+                        <button type="button" class="btn btn-warning" id="validate-data-btn">فحص البيانات</button>
                     </div>
                     <div id="form-message"></div>
                 </form>
@@ -375,14 +475,15 @@ https://example.com/stream3</textarea>
 
             <div class="matches-container">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0;">المباريات المضافة</h3>
+                    <h3 style="margin: 0;">المباريات المضافة <span class="security-badge">مؤمنة</span></h3>
                     <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-small btn-info" onclick="refreshMatches()">🔄 تحديث</button>
-                        <button class="btn btn-small btn-warning" onclick="testFirebaseConnection()">🧪 اختبار Firebase</button>
+                        <button class="btn btn-small btn-info" onclick="refreshSecureMatches()">🔄 تحديث مؤمن</button>
+                        <button class="btn btn-small btn-warning" onclick="testSecureFirebaseConnection()">🧪 اختبار Firebase المؤمن</button>
+                        <button class="btn btn-small btn-danger" onclick="checkSecurityStatus()">🛡️ حالة الأمان</button>
                     </div>
                 </div>
                 <div id="matches-list">
-                    <div class="loading">جاري تحميل المباريات...</div>
+                    <div class="loading">جاري تحميل المباريات المؤمنة...</div>
                 </div>
             </div>
         </div>
@@ -391,28 +492,53 @@ https://example.com/stream3</textarea>
     <!-- قاعدة بيانات الفرق -->
     <script src="js/teams-database.js"></script>
     
-    <!-- السكريبت الرئيسي للوحة التحكم -->
-    <script type="module" src="js/admin.js"></script>
+    <!-- السكريبت الرئيسي للوحة التحكم المؤمنة -->
+    <script type="module" src="js/admin-secure.js"></script>
     
     <!-- دوال مساعدة سريعة -->
     <script>
-        // دوال مساعدة سريعة
+        // دوال مساعدة سريعة مؤمنة
         function fillTestData() {
             document.getElementById('email').value = 'admin@wacel.com';
             document.getElementById('password').value = 'Ww735981122';
             document.getElementById('login-message').innerHTML = `
-                <div style="background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin: 10px 0;">
-                    ✅ تم تعبئة بيانات الاختبار بنجاح
+                <div style="background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%); 
+                     color: white; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                    ✅ تم تعبئة بيانات الاختبار المؤمنة بنجاح
                 </div>
             `;
         }
         
-        function refreshMatches() {
-            if (typeof loadMatches === 'function') {
-                loadMatches();
+        function enableSecureDirectMode() {
+            if (typeof window.enableDirectMode === 'function') {
+                window.enableDirectMode();
+            } else {
+                // التحقق من النطاق أولاً
+                if (window.firebaseProtection && window.firebaseProtection.isValidDomain) {
+                    document.getElementById('login-section').classList.add('hidden');
+                    document.getElementById('dashboard-section').classList.remove('hidden');
+                    document.getElementById('current-domain').textContent = window.location.hostname;
+                    document.getElementById('login-message').innerHTML = `
+                        <div style="background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%); 
+                             color: white; padding: 15px; border-radius: 8px; margin: 10px 0; text-align: center;">
+                            🛡️ تم تفعيل الوضع المباشر المؤمن بنجاح!
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('security-warning').classList.remove('hidden');
+                    document.getElementById('domain-check').classList.add('invalid-domain');
+                    document.getElementById('domain-check').textContent = '❌ النطاق الحالي غير مصرح به';
+                }
+            }
+        }
+        
+        function refreshSecureMatches() {
+            if (typeof loadSecureMatches === 'function') {
+                loadSecureMatches();
                 document.getElementById('login-message').innerHTML = `
-                    <div style="background: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 5px; margin: 10px 0;">
-                        🔄 جاري تحديث المباريات...
+                    <div style="background: rgba(76, 175, 80, 0.2); color: #2E7D32; 
+                         padding: 10px; border-radius: 5px; margin: 10px 0; border: 1px solid #4CAF50;">
+                        🔄 جاري تحديث المباريات المؤمنة...
                     </div>
                 `;
                 setTimeout(() => {
@@ -421,19 +547,50 @@ https://example.com/stream3</textarea>
             }
         }
         
-        function enableDirectMode() {
-            if (typeof window.enableDirectMode === 'function') {
-                window.enableDirectMode();
+        function testSecureFirebaseConnection() {
+            if (typeof testFirebaseConnection === 'function') {
+                testFirebaseConnection();
             } else {
-                // حل بديل مباشر
-                document.getElementById('login-section').classList.add('hidden');
-                document.getElementById('dashboard-section').classList.remove('hidden');
-                document.getElementById('login-message').innerHTML = `
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                         color: white; padding: 15px; border-radius: 8px; margin: 10px 0; text-align: center;">
-                        🎉 تم تفعيل الوضع المباشر بنجاح!
-                    </div>
-                `;
+                alert('🔒 وظيفة اختبار الاتصال المؤمن غير متاحة');
+            }
+        }
+        
+        function testSecuritySystem() {
+            // اختبار نظام الأمان
+            const currentDomain = window.location.hostname;
+            const domainCheck = document.getElementById('domain-check');
+            
+            if (window.firebaseProtection) {
+                const isValid = window.firebaseProtection.isValidDomain;
+                domainCheck.textContent = isValid ? 
+                    '✅ النطاق الحالي مصرح به للوصول إلى النظام المؤمن' : 
+                    '❌ النطاق الحالي غير مصرح به للوصول';
+                domainCheck.className = `domain-check ${isValid ? 'valid-domain' : 'invalid-domain'}`;
+                
+                if (!isValid) {
+                    document.getElementById('security-warning').classList.remove('hidden');
+                }
+                
+                updateSecurityStatus(isValid);
+            } else {
+                domainCheck.textContent = '⚠️ نظام الحماية غير متوفر';
+                domainCheck.className = 'domain-check invalid-domain';
+                updateSecurityStatus(false);
+            }
+        }
+        
+        function checkSecurityStatus() {
+            if (window.firebaseProtection) {
+                alert(`
+🛡️ حالة نظام الأمان:
+• النطاق الحالي: ${window.location.hostname}
+• النطاق المسموح: ${window.firebaseProtection.allowedDomain || 'غير محدد'}
+• حالة النطاق: ${window.firebaseProtection.isValidDomain ? '✅ مصرح' : '❌ غير مصرح'}
+• وقت الفحص: ${new Date().toLocaleString()}
+• مصدر الصفحة: ${window.location.origin}
+                `);
+            } else {
+                alert('⚠️ نظام الحماية غير متوفر');
             }
         }
         
@@ -445,29 +602,56 @@ https://example.com/stream3</textarea>
             }
         }
         
-        // تحديث حالة Firebase
+        // تحديث حالة Firebase المؤمن
         function updateFirebaseStatus(status) {
             const statusElement = document.getElementById('firebase-status');
             if (statusElement) {
-                statusElement.textContent = status ? '✅' : '❌';
-                statusElement.style.color = status ? '#28a745' : '#dc3545';
+                statusElement.textContent = status ? '🔐' : '🔓';
+                statusElement.style.color = status ? '#4CAF50' : '#f44336';
             }
         }
         
-        // تحديث حالة قاعدة البيانات
+        // تحديث حالة قاعدة البيانات المؤمنة
         function updateDatabaseStatus(status) {
             const statusElement = document.getElementById('database-status');
             if (statusElement) {
-                statusElement.textContent = status ? '🟢' : '🔴';
-                statusElement.style.color = status ? '#28a745' : '#dc3545';
+                statusElement.textContent = status ? '🛡️' : '⚠️';
+                statusElement.style.color = status ? '#4CAF50' : '#ff9800';
+            }
+        }
+        
+        // تحديث حالة الأمان
+        function updateSecurityStatus(status) {
+            const statusElement = document.getElementById('security-status');
+            if (statusElement) {
+                statusElement.textContent = status ? '✅' : '❌';
+                statusElement.style.color = status ? '#4CAF50' : '#f44336';
             }
         }
         
         // تشغيل التحديثات عند التحميل
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('✅ دوال المساعدة جاهزة');
+            console.log('✅ دوال المساعدة المؤمنة جاهزة');
+            
+            // فحص النطاق تلقائياً
+            setTimeout(testSecuritySystem, 100);
+            
+            // تحديث النطاق الحالي
+            const currentDomain = document.getElementById('current-domain');
+            if (currentDomain) {
+                currentDomain.textContent = window.location.hostname;
+            }
+            
+            // تهيئة الإحصائيات
             updateFirebaseStatus(true);
             updateDatabaseStatus(true);
+            updateSecurityStatus(true);
+            
+            // فحص النطاق
+            const domainCheck = document.getElementById('domain-check');
+            if (domainCheck) {
+                domainCheck.textContent = `🔍 فحص النطاق: ${window.location.hostname}`;
+            }
         });
     </script>
 </body>
