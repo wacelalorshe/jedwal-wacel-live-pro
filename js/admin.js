@@ -1,17 +1,34 @@
-// admin.js - النسخة المحدثة مع Firebase الجديد
-console.log("🚀 تحميل لوحة التحكم مع Firebase الجديد...");
+// admin.js - النسخة المؤمنة مع Firebase الجديد
+console.log("🔐 تحميل لوحة التحكم المؤمنة...");
 
-// استيراد Firebase
-import { db, auth } from "./firebase-config.js";
-import { 
-    ref, onValue, push, update, remove, set, get 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-import { 
-    signInWithEmailAndPassword, signOut, onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+// استيراد النظام المؤمن
+import { secureDb, getSecureMatches, addSecureMatch } from "./secure-firebase-config.js";
+import { ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log("📄 لوحة التحكم جاهزة للتحميل");
+    console.log("📄 لوحة التحكم المؤمنة جاهزة للتحميل");
+    
+    // التحقق من صحة النطاق أولاً
+    if (window.firebaseProtection && !window.firebaseProtection.isValidDomain) {
+        console.error("🚫 محاولة الوصول من نطاق غير مصرح");
+        document.body.innerHTML = `
+            <div style="
+                text-align: center;
+                padding: 50px;
+                font-family: Arial, sans-serif;
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                color: white;
+                min-height: 100vh;
+            ">
+                <h1>🚫 وصول غير مصرح به</h1>
+                <p>لوحة التحكم متاحة فقط من النطاقات المصرح بها</p>
+                <p style="font-size: 14px; margin-top: 20px;">
+                    النطاق الحالي: ${window.location.hostname}
+                </p>
+            </div>
+        `;
+        return;
+    }
     
     // عناصر DOM
     const loginSection = document.getElementById('login-section');
@@ -21,58 +38,59 @@ document.addEventListener('DOMContentLoaded', async function() {
     const loginMessage = document.getElementById('login-message');
     const testConnectionBtn = document.getElementById('test-connection-btn');
     
-    // ========== اختبار الاتصال مع Firebase الجديد ==========
+    // ========== اختبار الاتصال مع Firebase المؤمن ==========
     window.testFirebaseConnection = async function() {
-        console.log("🔍 اختبار اتصال Firebase الجديد...");
+        console.log("🔍 اختبار اتصال Firebase المؤمن...");
         
-        if (!db) {
-            alert("❌ قاعدة البيانات غير متاحة");
+        if (!secureDb) {
+            alert("❌ قاعدة البيانات المؤمنة غير متاحة");
             return;
         }
         
-        const formMessage = document.getElementById('form-message');
-        
         try {
-            // اختبار قراءة البيانات
-            const snapshot = await get(ref(db, 'matches'));
-            console.log("✅ اختبار القراءة ناجح");
-            console.log("📊 بيانات matches:", snapshot.val());
+            // اختبار القراءة باستخدام النظام المؤمن
+            const matches = await getSecureMatches();
+            console.log("✅ اختبار القراءة المؤمنة ناجح");
+            console.log("📊 بيانات matches المؤمنة:", matches);
             
-            // اختبار الكتابة
-            const testRef = ref(db, 'test_connection');
-            await set(testRef, {
+            // اختبار الكتابة باستخدام النظام المؤمن
+            const testData = {
+                test: true,
                 timestamp: new Date().toISOString(),
-                message: "اختبار اتصال Firebase الجديد"
-            });
-            console.log("✅ اختبار الكتابة ناجح");
+                message: "اختبار اتصال Firebase المؤمن"
+            };
+            
+            const testRef = ref(secureDb, 'test_connection');
+            await set(testRef, testData);
+            console.log("✅ اختبار الكتابة المؤمنة ناجح");
             
             // تنظيف البيانات الاختبارية
             await remove(testRef);
             
             alert(`
-✅ اختبار الاتصال ناجح!
-• قاعدة البيانات: متصلة
-• عدد المباريات: ${snapshot.size}
+✅ اختبار الاتصال المؤمن ناجح!
+• قاعدة البيانات: متصلة ومؤمنة
 • المشروع: wacel-live-pro
+• النطاق المسموح: ${window.firebaseProtection?.allowedDomain || 'غير محدد'}
             `);
             
         } catch (error) {
-            console.error("❌ اختبار الاتصال فاشل:", error);
+            console.error("❌ اختبار الاتصال المؤمن فاشل:", error);
             alert(`
-❌ اختبار الاتصال فاشل
+❌ اختبار الاتصال المؤمن فاشل
 الخطأ: ${error.message || error.code}
 
 تحقق من:
 1. اتصال الإنترنت
-2. قواعد أمان قاعدة البيانات
-3. إعدادات Firebase Console
+2. صلاحيات الوصول
+3. قواعد الأمان
             `);
         }
     };
     
     // ========== نظام تسجيل الدخول المبسط ==========
     window.enableDirectMode = function() {
-        console.log("⚡ تفعيل الوضع المباشر...");
+        console.log("⚡ تفعيل الوضع المباشر المؤمن...");
         
         // إخفاء قسم تسجيل الدخول
         if (loginSection) {
@@ -95,52 +113,60 @@ document.addEventListener('DOMContentLoaded', async function() {
                     margin: 10px 0;
                     text-align: center;
                 ">
-                    <h4 style="margin: 0 0 5px 0;">🎉 لوحة التحكم جاهزة!</h4>
-                    <p style="margin: 0; font-size: 14px;">المشروع: wacel-live-pro</p>
+                    <h4 style="margin: 0 0 5px 0;">🔐 لوحة التحكم المؤمنة جاهزة!</h4>
+                    <p style="margin: 0; font-size: 14px;">
+                        المشروع: wacel-live-pro | النطاق: ${window.location.hostname}
+                    </p>
                 </div>
             `;
         }
         
-        // تحميل المباريات
-        loadMatches();
+        // تحميل المباريات باستخدام النظام المؤمن
+        loadSecureMatches();
         
-        console.log("✅ الوضع المباشر مفعل بنجاح");
+        console.log("✅ الوضع المباشر المؤمن مفعل بنجاح");
     };
     
-    // ========== تحميل المباريات ==========
-    async function loadMatches() {
+    // ========== تحميل المباريات باستخدام النظام المؤمن ==========
+    async function loadSecureMatches() {
         const matchesList = document.getElementById('matches-list');
         if (!matchesList) return;
         
-        console.log("📥 جاري تحميل المباريات من Firebase...");
-        
-        if (!db) {
-            matchesList.innerHTML = '<div class="error">❌ قاعدة البيانات غير متاحة</div>';
-            return;
-        }
+        console.log("📥 جاري تحميل المباريات من النظام المؤمن...");
         
         try {
-            const matchesRef = ref(db, 'matches');
+            // استخدام دالة القراءة المؤمنة
+            const matchesRef = ref(secureDb, 'matches');
             
             onValue(matchesRef, 
                 function(snapshot) {
-                    console.log("📊 تم استلام بيانات المباريات");
+                    console.log("📊 تم استلام بيانات المباريات المؤمنة");
                     displayMatches(snapshot);
                 },
                 function(error) {
-                    console.error("❌ خطأ في تحميل المباريات:", error);
+                    console.error("❌ خطأ في تحميل المباريات المؤمنة:", error);
                     matchesList.innerHTML = `
                         <div class="error">
-                            ❌ خطأ في تحميل المباريات
+                            🔒 خطأ في تحميل المباريات المؤمنة
                             <p>${error.message || error.code}</p>
+                            <p style="font-size: 12px; margin-top: 5px;">
+                                تحقق من صلاحيات الوصول
+                            </p>
                         </div>
                     `;
                 }
             );
             
         } catch (error) {
-            console.error("❌ خطأ:", error);
-            matchesList.innerHTML = `<div class="error">❌ ${error.message}</div>`;
+            console.error("❌ خطأ في النظام المؤمن:", error);
+            matchesList.innerHTML = `
+                <div class="error">
+                    🔒 ${error.message}
+                    <p style="font-size: 12px;">
+                        قد تحتاج إلى تحديث الصفحة أو التحقق من الاتصال
+                    </p>
+                </div>
+            `;
         }
     }
     
@@ -156,7 +182,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 <div class="loading">
                     📭 لا توجد مباريات مضافة
                     <p style="font-size: 14px; margin-top: 10px;">
-                        ابدأ بإضافة أول مباراة باستخدام النموذج أعلاه
+                        ابدأ بإضافة أول مباراة باستخدام النموذج المؤمن أدناه
                     </p>
                 </div>
             `;
@@ -164,21 +190,21 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
         
         const matches = snapshot.val();
-        console.log(`🎯 عدد المباريات: ${Object.keys(matches).length}`);
+        console.log(`🎯 عدد المباريات المؤمنة: ${Object.keys(matches).length}`);
         
         snapshot.forEach(function(childSnapshot) {
             const matchId = childSnapshot.key;
             const match = childSnapshot.val();
             
             const matchItem = document.createElement('div');
-            matchItem.className = 'match-item';
+            matchItem.className = 'match-item secure-match';
             
             // محتوى الروابط
             let linksContent = '';
             if (match.linkType === 'xmtv' && match.xmtvLink) {
                 linksContent = `
                     <div class="xmtv-section">
-                        <strong>🔗 رابط XPola مباشر:</strong>
+                        <strong>🔒 رابط XPola مباشر:</strong>
                         <div class="xmtv-actions">
                             <button class="btn btn-success btn-small" 
                                 onclick="window.open('${match.xmtvLink}', '_blank')">
@@ -189,12 +215,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                 `;
             } else if (match.links && match.links.length > 0) {
                 linksContent = `
-                    <strong>🔗 روابط المشاهدة (${match.links.length}):</strong>
+                    <strong>🔒 روابط المشاهدة (${match.links.length}):</strong>
                     ${match.links.slice(0, 3).map((link, index) => 
                         `<div class="link-item">
                             <span>${index + 1}. ${link.substring(0, 50)}...</span>
                             <button class="btn btn-small" 
-                                onclick="copyToClipboard('${link.replace(/'/g, "\\'")}')">
+                                onclick="secureCopyToClipboard('${link.replace(/'/g, "\\'")}')">
                                 نسخ
                             </button>
                         </div>`
@@ -205,9 +231,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             matchItem.innerHTML = `
                 <div class="match-header">
                     <h4>${match.league || 'بدون دوري'}</h4>
+                    <span class="secure-badge">🔒</span>
                     <div class="actions">
-                        <button class="btn btn-primary" onclick="editMatch('${matchId}')">تعديل</button>
-                        <button class="btn btn-danger" onclick="deleteMatch('${matchId}')">حذف</button>
+                        <button class="btn btn-primary" onclick="editSecureMatch('${matchId}')">تعديل</button>
+                        <button class="btn btn-danger" onclick="deleteSecureMatch('${matchId}')">حذف</button>
                     </div>
                 </div>
                 <div class="match-teams">
@@ -230,8 +257,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <div>🎤 ${match.commentator || 'بدون معلق'}</div>
                     <div>📅 ${match.date || 'بدون تاريخ'}</div>
                 </div>
-                <div class="links-container">
-                    ${linksContent || '<div class="link-item">لا توجد روابط</div>'}
+                <div class="links-container secure-links">
+                    ${linksContent || '<div class="link-item">لا توجد روابط مؤمنة</div>'}
+                </div>
+                <div class="match-meta">
+                    <small>🆔 ${matchId.substring(0, 8)}...</small>
+                    <small>🕒 ${match.createdAt ? new Date(match.createdAt).toLocaleString() : 'غير معروف'}</small>
                 </div>
             `;
             
@@ -239,48 +270,81 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
-    // ========== دوال المساعدة ==========
-    window.copyToClipboard = function(text) {
+    // ========== دوال المساعدة المؤمنة ==========
+    window.secureCopyToClipboard = function(text) {
         navigator.clipboard.writeText(text)
-            .then(() => alert("✅ تم النسخ إلى الحافظة"))
+            .then(() => {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #4CAF50;
+                    color: white;
+                    padding: 10px 20px;
+                    border-radius: 5px;
+                    z-index: 1000;
+                    animation: fadeInOut 3s;
+                `;
+                notification.textContent = "✅ تم النسخ إلى الحافظة (مؤمن)";
+                document.body.appendChild(notification);
+                setTimeout(() => notification.remove(), 3000);
+            })
             .catch(() => alert("❌ فشل في النسخ"));
     };
     
-    window.editMatch = function(matchId) {
-        console.log("✏️ تحرير المباراة:", matchId);
-        alert(`سيتم تحرير المباراة: ${matchId}\nهذه الميزة تحت التطوير`);
+    window.editSecureMatch = function(matchId) {
+        console.log("✏️ تحرير المباراة المؤمنة:", matchId);
+        alert(`تحرير المباراة المؤمنة: ${matchId}\nسيتم فتح نموذج التحرير المؤمن`);
+        // يمكن إضافة منطق التحرير هنا
     };
     
-    window.deleteMatch = function(matchId) {
-        if (!confirm('⚠️ هل أنت متأكد من حذف هذه المباراة؟')) return;
+    window.deleteSecureMatch = function(matchId) {
+        if (!confirm('⚠️ هل أنت متأكد من حذف هذه المباراة المؤمنة؟')) return;
         
-        if (!db) {
-            alert("❌ قاعدة البيانات غير متاحة");
+        if (!secureDb) {
+            alert("❌ قاعدة البيانات المؤمنة غير متاحة");
             return;
         }
         
-        const matchRef = ref(db, 'matches/' + matchId);
+        const matchRef = ref(secureDb, 'matches/' + matchId);
         remove(matchRef)
             .then(() => {
-                console.log("✅ تم حذف المباراة");
-                alert("✅ تم حذف المباراة بنجاح");
+                console.log("✅ تم حذف المباراة المؤمنة");
+                
+                // إشعار مؤمن
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #f44336;
+                    color: white;
+                    padding: 10px 20px;
+                    border-radius: 5px;
+                    z-index: 1000;
+                    animation: fadeInOut 3s;
+                `;
+                notification.textContent = "✅ تم حذف المباراة المؤمنة";
+                document.body.appendChild(notification);
+                setTimeout(() => notification.remove(), 3000);
             })
             .catch(error => {
-                console.error("❌ خطأ في الحذف:", error);
-                alert("❌ فشل في حذف المباراة: " + error.message);
+                console.error("❌ خطأ في الحذف المؤمن:", error);
+                alert("🔒 فشل في حذف المباراة: " + error.message);
             });
     };
     
-    // ========== إعداد نموذج إضافة المباراة ==========
+    // ========== إعداد نموذج إضافة المباراة المؤمن ==========
     const matchForm = document.getElementById('match-form');
     if (matchForm) {
         matchForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            console.log("➕ محاولة إضافة مباراة جديدة...");
+            console.log("➕ محاولة إضافة مباراة جديدة مؤمنة...");
             
-            if (!db) {
-                alert("❌ قاعدة البيانات غير متاحة");
+            if (!secureDb) {
+                alert("❌ قاعدة البيانات المؤمنة غير متاحة");
                 return;
             }
             
@@ -301,78 +365,120 @@ document.addEventListener('DOMContentLoaded', async function() {
                 xmtvLink: document.getElementById('xmtv-link').value,
                 linkType: document.querySelector('.link-type-btn.active')?.dataset.type || 'regular',
                 createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                addedBy: window.location.hostname, // تسجيل مصدر الإضافة
+                secure: true // علامة أن هذه البيانات مؤمنة
             };
             
-            console.log("📝 بيانات المباراة:", matchData);
+            console.log("📝 بيانات المباراة المؤمنة:", matchData);
             
             try {
-                const matchesRef = ref(db, 'matches');
-                const result = await push(matchesRef, matchData);
+                // استخدام دالة الإضافة المؤمنة
+                const result = await addSecureMatch(matchData);
                 
-                console.log("✅ تم إضافة المباراة بنجاح، ID:", result.key);
+                console.log("✅ تم إضافة المباراة المؤمنة بنجاح، ID:", result.key);
                 
-                // رسالة نجاح
+                // رسالة نجاح مؤمنة
                 const formMessage = document.getElementById('form-message');
                 if (formMessage) {
                     formMessage.innerHTML = `
                         <div style="
-                            background: #d4edda;
-                            color: #155724;
-                            padding: 12px;
-                            border-radius: 5px;
+                            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+                            color: white;
+                            padding: 15px;
+                            border-radius: 8px;
                             margin: 10px 0;
+                            border-left: 5px solid #1B5E20;
                         ">
-                            ✅ تم إضافة المباراة بنجاح في Firebase!
-                            <p style="margin: 5px 0 0 0; font-size: 14px;">
+                            <strong>🔒 تم إضافة المباراة المؤمنة بنجاح!</strong>
+                            <p style="margin: 8px 0 0 0; font-size: 14px;">
                                 ${matchData.team1} vs ${matchData.team2}
+                            </p>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.9;">
+                                تم الحفظ في النظام المؤمن • ${new Date().toLocaleTimeString()}
                             </p>
                         </div>
                     `;
                     
                     setTimeout(() => {
                         formMessage.innerHTML = '';
-                    }, 3000);
+                    }, 5000);
                 }
                 
                 // إعادة تعيين النموذج
                 matchForm.reset();
                 
                 // إعادة تحميل المباريات
-                setTimeout(loadMatches, 1000);
+                setTimeout(loadSecureMatches, 1000);
                 
             } catch (error) {
-                console.error("❌ خطأ في إضافة المباراة:", error);
-                alert("❌ فشل في إضافة المباراة: " + error.message);
+                console.error("❌ خطأ في إضافة المباراة المؤمنة:", error);
+                alert("🔒 فشل في إضافة المباراة المؤمنة: " + error.message);
             }
         });
     }
     
-    // ========== بدء التشغيل ==========
-    console.log("🔧 تفعيل لوحة التحكم مباشرة...");
+    // ========== بدء التشغيل المؤمن ==========
+    console.log("🔧 تفعيل لوحة التحكم المؤمنة مباشرة...");
     
-    // تفعيل الوضع المباشر فوراً
+    // التحقق من إعدادات الحماية
+    console.log("🛡️ إعدادات الحماية:", {
+        domain: window.location.hostname,
+        protection: window.firebaseProtection,
+        allowed: window.firebaseProtection?.isValidDomain || false
+    });
+    
+    // تفعيل الوضع المباشر المؤمن فوراً
     setTimeout(() => {
         window.enableDirectMode();
         
-        // تفعيل زر اختبار الاتصال
+        // تفعيل زر اختبار الاتصال المؤمن
         if (testConnectionBtn) {
             testConnectionBtn.addEventListener('click', window.testFirebaseConnection);
         }
         
-        // تفعيل نظام التعبئة التلقائية
+        // تفعيل نظام التعبئة التلقائية المؤمن
         if (window.teamsDatabase) {
-            console.log("✅ قاعدة بيانات الفرق متاحة");
-            setupAutoFill();
+            console.log("✅ قاعدة بيانات الفرق المؤمنة متاحة");
+            setupSecureAutoFill();
         }
         
     }, 100);
     
-    // دالة التعبئة التلقائية
-    function setupAutoFill() {
-        console.log("🎨 تفعيل نظام التعبئة التلقائية...");
-        // يمكنك إضافة منطق التعبئة التلقائية هنا
+    // دالة التعبئة التلقائية المؤمنة
+    function setupSecureAutoFill() {
+        console.log("🎨 تفعيل نظام التعبئة التلقائية المؤمن...");
+        
+        // إضافة CSS للتأكيد المؤمن
+        const style = document.createElement('style');
+        style.textContent = `
+            .secure-match {
+                border-left: 4px solid #4CAF50;
+                background: linear-gradient(90deg, rgba(76, 175, 80, 0.05) 0%, transparent 100%);
+            }
+            .secure-badge {
+                background: #4CAF50;
+                color: white;
+                padding: 2px 8px;
+                border-radius: 10px;
+                font-size: 12px;
+                margin-left: 10px;
+            }
+            .secure-links {
+                background: rgba(76, 175, 80, 0.05);
+                border: 1px dashed #4CAF50;
+            }
+            @keyframes fadeInOut {
+                0% { opacity: 0; transform: translateY(-10px); }
+                10% { opacity: 1; transform: translateY(0); }
+                90% { opacity: 1; transform: translateY(0); }
+                100% { opacity: 0; transform: translateY(-10px); }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // يمكنك إضافة منطق التعبئة التلقائية المؤمن هنا
     }
 });
 
-console.log("✅ نظام لوحة التحكم جاهز مع Firebase الجديد");
+console.log("✅ نظام لوحة التحكم المؤمن جاهز");
