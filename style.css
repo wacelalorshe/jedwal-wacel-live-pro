@@ -1,0 +1,432 @@
+/* styles.css - الإصدار الكامل */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --primary-bg: linear-gradient(to right, #000, #151825, #000);
+    --card-bg: linear-gradient(to right, #151825, #3A4266, #151825);
+    --header-bg: linear-gradient(to right, #151825, #151825);
+    --accent-color: #434C75;
+    --text-color: #FFF;
+    --danger-color: #a52a2a;
+    --success-color: #2a8c2a;
+}
+
+body {
+    background: var(--primary-bg);
+    color: var(--text-color);
+    text-align: center;
+    padding: 70px 0 20px;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+h2 {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    color: var(--text-color);
+    font-weight: bold;
+    padding: 15px 0;
+    margin: 0;
+    z-index: 1000;
+    background: var(--header-bg);
+    border-radius: 0px 0px 20px 20px;
+    font-size: clamp(16px, 4vw, 20px);
+    border-bottom: 7px double var(--accent-color);
+    box-shadow: 0 0px 15px rgba(255, 255, 255, 0.1);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-container, .matches-container {
+    background: var(--card-bg);
+    border: 3px double var(--accent-color);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 0px 10px rgba(255, 255, 255, 0.1);
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    flex: 1;
+    min-width: 200px;
+    text-align: right;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid var(--accent-color);
+    background: #151825;
+    color: var(--text-color);
+    font-family: inherit;
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    margin: 5px;
+    transition: all 0.3s;
+    font-family: inherit;
+}
+
+.btn-primary {
+    background: var(--accent-color);
+    color: var(--text-color);
+}
+
+.btn-danger {
+    background: var(--danger-color);
+    color: var(--text-color);
+}
+
+.btn-success {
+    background: var(--success-color);
+    color: var(--text-color);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: var(--text-color);
+}
+
+.btn:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.flex-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 105px;
+    border: 3px double var(--accent-color);
+    border-left: 0;
+    border-right: 0;
+    font-weight: bold;
+    width: 88%;
+    max-width: 600px;
+    margin: 15px auto;
+    padding: 8px;
+    border-radius: 10px;
+    background: var(--card-bg);
+}
+
+.match-box {
+    border: 15px double #151825;
+    padding: 10px;
+    margin: 10px auto;
+    border-radius: 18px;
+    background: var(--card-bg);
+    width: 90%;
+    max-width: 600px;
+    text-decoration: none;
+    display: block;
+    color: inherit;
+    box-shadow: 0 0px 10px rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s;
+}
+
+.match-box:hover {
+    transform: scale(1.02);
+}
+
+.match-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px;
+    gap: 10px;
+}
+
+.match-info div {
+    text-align: center;
+    width: 32%;
+    flex: 1;
+}
+
+.match-info img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.match-time {
+    background: var(--card-bg);
+    color: var(--text-color);
+    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    display: inline-block;
+    margin: 5px 0;
+    box-shadow: 0 0px 10px rgba(255, 255, 255, 0.1);
+}
+
+.match-details {
+    padding: 8px 0 0;
+    margin-top: 8px;
+    display: flex;
+    font-size: clamp(12px, 3vw, 14px);
+    border-top: 1px groove rgba(255, 255, 255, 0.5);
+    justify-content: space-around;
+}
+
+.match-details div {
+    padding: 8px;
+    position: relative;
+    flex: 1;
+}
+
+.match-details div:nth-child(2)::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 1px;
+    height: 70%;
+    background: rgba(255, 255, 255, 0.7);
+    transform: translateY(-50%);
+}
+
+.img img {
+    max-width: 40px;
+    height: auto;
+    max-height: 30px;
+    object-fit: contain;
+}
+
+.match-item {
+    background: var(--card-bg);
+    border: 2px solid var(--accent-color);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    text-align: right;
+}
+
+.match-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--accent-color);
+}
+
+.match-teams {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.match-team {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 30%;
+}
+
+.match-team img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 5px;
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.links-container {
+    margin-top: 15px;
+}
+
+.link-item {
+    background: #151825;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    word-break: break-all;
+    text-align: left;
+    font-size: 12px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.loading {
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+}
+
+.error {
+    background: var(--danger-color);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+.success {
+    background: var(--success-color);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+.admin-link {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--accent-color);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: bold;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    z-index: 100;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        flex-direction: column;
+    }
+    
+    .match-teams {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .match-team {
+        width: 100%;
+        flex-direction: row;
+        justify-content: center;
+        gap: 10px;
+    }
+    
+    .match-time {
+        margin: 10px 0;
+    }
+    
+    .match-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .actions {
+        align-self: flex-end;
+    }
+    
+    .flex-container {
+        gap: 10px;
+        padding: 6px;
+        font-size: 17px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding-top: 60px;
+    }
+    
+    .match-info img {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .match-time {
+        font-size: 12px;
+        padding: 4px 9px;
+    }
+}
+
+
+/* أنماط نظام الاقتراحات التلقائية */
+.suggestions-box {
+    position: absolute;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    width: calc(100% - 2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.suggestion-item:hover {
+    background-color: #f5f5f5;
+}
+
+.suggestion-item img {
+    border-radius: 3px;
+}
+
+.hidden {
+    display: none;
+}
+
+/* تعديلات على حقول الإدخال لاستيعاب الاقتراحات */
+.form-group {
+    position: relative;
+}
+        
