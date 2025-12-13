@@ -7,7 +7,8 @@
     
     <!-- حماية وتشويش الكود -->
     <script src="js/obfuscator.js"></script>
-    <script src="js/firebase-security.js"></script>
+    <!-- نظام حماية Firebase المحدث -->
+    <script src="js/firebase-security-fixed.js"></script>
     <script src="js/data-validator.js"></script>
     
     <!-- Firebase المؤمن -->
@@ -269,9 +270,53 @@
             border-left: 5px solid #e65100;
             font-size: 14px;
         }
+        
+        /* أنماط النظام */
+        .security-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .status-online {
+            background: #4CAF50;
+        }
+        
+        .status-offline {
+            background: #f44336;
+        }
     </style>
 </head>
 <body>
+    <!-- شريط حالة النظام -->
+    <div id="system-status-bar" class="security-banner">
+        <div class="system-status">
+            <span class="status-dot status-online"></span>
+            <span id="system-status-text">جاري تحميل النظام...</span>
+        </div>
+        <div style="font-size: 12px;">
+            🛡️ وسيل لايف برو | النسخة المؤمنة
+        </div>
+    </div>
+    
     <div class="container">
         <!-- قسم تسجيل الدخول -->
         <div id="login-section" class="form-container">
@@ -288,6 +333,9 @@
             <!-- تحذير الأمان -->
             <div id="security-warning" class="security-warning hidden">
                 ⚠️ تنبيه: هذا النطاق غير مصرح به للوصول إلى لوحة التحكم
+                <p style="margin: 5px 0 0 0; font-size: 12px;">
+                    النطاقات المصرح بها: wacelalorshe.github.io ، jedwal.netlify.app
+                </p>
             </div>
             
             <h3>تسجيل الدخول للإدارة <span class="security-badge">مؤمن</span></h3>
@@ -307,6 +355,7 @@
                     <button type="button" class="btn btn-info" onclick="fillTestData()">تعبئة بيانات الاختبار</button>
                     <button type="button" class="btn btn-warning" onclick="enableSecureDirectMode()">الوضع المباشر المؤمن</button>
                     <button type="button" class="btn btn-danger" onclick="testSecuritySystem()">اختبار نظام الأمان</button>
+                    <button type="button" class="btn btn-success" onclick="checkSystemStatus()">فحص حالة النظام</button>
                 </div>
                 
                 <div class="form-row">
@@ -314,6 +363,17 @@
                 </div>
                 <div id="login-message"></div>
             </form>
+            
+            <!-- معلومات النظام -->
+            <div id="system-info" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+                <h4 style="margin: 0 0 10px 0;">📊 معلومات النظام</h4>
+                <div style="font-size: 12px; line-height: 1.6;">
+                    <div><strong>النطاق الحالي:</strong> <span id="current-domain-info">جاري التحميل...</span></div>
+                    <div><strong>حالة الحماية:</strong> <span id="protection-status">غير معروف</span></div>
+                    <div><strong>وقت التحميل:</strong> <span id="load-time">-</span></div>
+                    <div><strong>المتصفح:</strong> <span id="browser-info">-</span></div>
+                </div>
+            </div>
         </div>
 
         <!-- قسم لوحة التحكم -->
@@ -497,57 +557,189 @@ https://example.com/stream3</textarea>
     
     <!-- دوال مساعدة سريعة -->
     <script>
+        // متغيرات النظام
+        const systemStartTime = Date.now();
+        
+        // دالة لعرض معلومات النظام
+        function updateSystemInfo() {
+            document.getElementById('current-domain-info').textContent = window.location.hostname;
+            document.getElementById('load-time').textContent = new Date().toLocaleTimeString();
+            
+            // تحديد المتصفح
+            const userAgent = navigator.userAgent;
+            let browser = 'غير معروف';
+            
+            if (userAgent.includes('Chrome')) browser = 'Google Chrome';
+            else if (userAgent.includes('Firefox')) browser = 'Mozilla Firefox';
+            else if (userAgent.includes('Safari')) browser = 'Apple Safari';
+            else if (userAgent.includes('Edge')) browser = 'Microsoft Edge';
+            
+            document.getElementById('browser-info').textContent = browser;
+            
+            // تحديث حالة الحماية
+            if (window.firebaseProtection) {
+                const status = window.firebaseProtection.isValidDomain ? '✅ مفعل' : '❌ غير مفعل';
+                document.getElementById('protection-status').textContent = status;
+                document.getElementById('protection-status').style.color = window.firebaseProtection.isValidDomain ? '#4CAF50' : '#f44336';
+            } else {
+                document.getElementById('protection-status').textContent = '⚠️ جاري التحميل...';
+            }
+            
+            // تحديث شريط الحالة
+            const systemStatusText = document.getElementById('system-status-text');
+            const systemStatusDot = document.querySelector('.status-dot');
+            
+            if (window.firebaseProtection) {
+                if (window.firebaseProtection.isValidDomain) {
+                    systemStatusText.textContent = 'النظام يعمل بشكل طبيعي';
+                    systemStatusText.style.color = '#4CAF50';
+                    systemStatusDot.className = 'status-dot status-online';
+                } else {
+                    systemStatusText.textContent = 'النطاق غير مصرح';
+                    systemStatusText.style.color = '#f44336';
+                    systemStatusDot.className = 'status-dot status-offline';
+                }
+            } else {
+                systemStatusText.textContent = 'جاري تحميل نظام الحماية...';
+                systemStatusText.style.color = '#ff9800';
+                systemStatusDot.className = 'status-dot status-offline';
+            }
+        }
+        
         // دوال مساعدة سريعة مؤمنة
         function fillTestData() {
             document.getElementById('email').value = 'admin@wacel.com';
             document.getElementById('password').value = 'Ww735981122';
-            document.getElementById('login-message').innerHTML = `
-                <div style="background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%); 
-                     color: white; padding: 10px; border-radius: 5px; margin: 10px 0;">
-                    ✅ تم تعبئة بيانات الاختبار المؤمنة بنجاح
-                </div>
-            `;
+            
+            const messageDiv = document.getElementById('login-message');
+            if (messageDiv) {
+                messageDiv.innerHTML = `
+                    <div style="
+                        background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+                        color: white; 
+                        padding: 10px; 
+                        border-radius: 5px; 
+                        margin: 10px 0;
+                        text-align: center;
+                    ">
+                        ✅ تم تعبئة بيانات الاختبار المؤمنة بنجاح
+                    </div>
+                `;
+            }
         }
         
         function enableSecureDirectMode() {
-            if (typeof window.enableDirectMode === 'function') {
-                window.enableDirectMode();
-            } else {
-                // التحقق من النطاق أولاً
-                if (window.firebaseProtection && window.firebaseProtection.isValidDomain) {
+            console.log('🔒 محاولة تفعيل الوضع المباشر المؤمن...');
+            
+            // التحقق من وجود نظام الحماية
+            if (window.firebaseProtection) {
+                const isValid = window.firebaseProtection.isValidDomain;
+                
+                if (isValid) {
+                    // تفعيل الوضع المباشر
                     document.getElementById('login-section').classList.add('hidden');
                     document.getElementById('dashboard-section').classList.remove('hidden');
+                    
+                    // تحديث المعلومات
                     document.getElementById('current-domain').textContent = window.location.hostname;
-                    document.getElementById('login-message').innerHTML = `
-                        <div style="background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%); 
-                             color: white; padding: 15px; border-radius: 8px; margin: 10px 0; text-align: center;">
-                            🛡️ تم تفعيل الوضع المباشر المؤمن بنجاح!
-                        </div>
-                    `;
+                    document.getElementById('domain-info').textContent = '✅ النطاق مصرح به';
+                    
+                    // عرض رسالة نجاح
+                    const messageDiv = document.getElementById('login-message');
+                    if (messageDiv) {
+                        messageDiv.innerHTML = `
+                            <div style="
+                                background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+                                color: white; 
+                                padding: 15px; 
+                                border-radius: 8px; 
+                                margin: 10px 0; 
+                                text-align: center;
+                            ">
+                                🛡️ تم تفعيل الوضع المباشر المؤمن بنجاح!
+                                <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">
+                                    يمكنك الآن إضافة وإدارة المباريات
+                                </p>
+                            </div>
+                        `;
+                    }
+                    
+                    // تحديث شريط النظام
+                    updateSystemInfo();
+                    
+                    console.log('✅ تم تفعيل الوضع المباشر المؤمن');
                 } else {
+                    // النطاق غير مصرح
                     document.getElementById('security-warning').classList.remove('hidden');
                     document.getElementById('domain-check').classList.add('invalid-domain');
                     document.getElementById('domain-check').textContent = '❌ النطاق الحالي غير مصرح به';
+                    
+                    alert('⚠️ هذا النطاق غير مصرح به للوصول إلى لوحة التحكم المؤمنة');
                 }
+            } else {
+                // نظام الحماية غير متوفر
+                const messageDiv = document.getElementById('login-message');
+                if (messageDiv) {
+                    messageDiv.innerHTML = `
+                        <div style="
+                            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+                            color: white; 
+                            padding: 10px; 
+                            border-radius: 5px; 
+                            margin: 10px 0;
+                            text-align: center;
+                        ">
+                            ⚠️ نظام الحماية غير متوفر
+                            <p style="margin: 5px 0 0 0; font-size: 12px;">
+                                جاري محاولة إعادة التحميل...
+                            </p>
+                        </div>
+                    `;
+                }
+                
+                // محاولة إعادة تحميل النظام
+                setTimeout(() => {
+                    if (typeof testSecuritySystem === 'function') {
+                        testSecuritySystem();
+                    }
+                }, 1000);
             }
         }
         
         function refreshSecureMatches() {
+            console.log('🔄 طلب تحديث المباريات المؤمنة');
+            
             if (typeof loadSecureMatches === 'function') {
                 loadSecureMatches();
-                document.getElementById('login-message').innerHTML = `
-                    <div style="background: rgba(76, 175, 80, 0.2); color: #2E7D32; 
-                         padding: 10px; border-radius: 5px; margin: 10px 0; border: 1px solid #4CAF50;">
-                        🔄 جاري تحديث المباريات المؤمنة...
-                    </div>
-                `;
+                
+                const messageDiv = document.getElementById('login-message');
+                if (messageDiv) {
+                    messageDiv.innerHTML = `
+                        <div style="
+                            background: rgba(76, 175, 80, 0.2); 
+                            color: #2E7D32; 
+                            padding: 10px; 
+                            border-radius: 5px; 
+                            margin: 10px 0; 
+                            border: 1px solid #4CAF50;
+                            text-align: center;
+                        ">
+                            🔄 جاري تحديث المباريات المؤمنة...
+                        </div>
+                    `;
+                }
+                
                 setTimeout(() => {
-                    document.getElementById('login-message').innerHTML = '';
+                    if (messageDiv) messageDiv.innerHTML = '';
                 }, 2000);
+            } else {
+                alert('🔒 دالة تحميل المباريات المؤمنة غير متاحة');
             }
         }
         
         function testSecureFirebaseConnection() {
+            console.log('🧪 اختبار اتصال Firebase المؤمن');
+            
             if (typeof testFirebaseConnection === 'function') {
                 testFirebaseConnection();
             } else {
@@ -556,42 +748,134 @@ https://example.com/stream3</textarea>
         }
         
         function testSecuritySystem() {
-            // اختبار نظام الأمان
-            const currentDomain = window.location.hostname;
+            console.log('🛡️ اختبار نظام الأمان...');
+            
             const domainCheck = document.getElementById('domain-check');
+            const securityWarning = document.getElementById('security-warning');
             
             if (window.firebaseProtection) {
                 const isValid = window.firebaseProtection.isValidDomain;
-                domainCheck.textContent = isValid ? 
-                    '✅ النطاق الحالي مصرح به للوصول إلى النظام المؤمن' : 
-                    '❌ النطاق الحالي غير مصرح به للوصول';
-                domainCheck.className = `domain-check ${isValid ? 'valid-domain' : 'invalid-domain'}`;
                 
-                if (!isValid) {
-                    document.getElementById('security-warning').classList.remove('hidden');
+                if (isValid) {
+                    domainCheck.textContent = '✅ النطاق الحالي مصرح به للوصول إلى النظام المؤمن';
+                    domainCheck.className = 'domain-check valid-domain';
+                    securityWarning.classList.add('hidden');
+                    
+                    // عرض تفاصيل النطاق
+                    alert(`
+🛡️ اختبار نظام الأمان - النتيجة: ✅ ناجح
+
+• النطاق الحالي: ${window.location.hostname}
+• حالة النطاق: مصرح به
+• وقت الفحص: ${new Date().toLocaleString()}
+• المشروع: wacel-live-pro
+• مصدر الصفحة: ${window.location.origin}
+
+يمكنك الآن استخدام لوحة التحكم المؤمنة.
+                    `);
+                    
+                    // تفعيل الوضع المباشر تلقائياً
+                    setTimeout(enableSecureDirectMode, 500);
+                } else {
+                    domainCheck.textContent = '❌ النطاق الحالي غير مصرح به للوصول';
+                    domainCheck.className = 'domain-check invalid-domain';
+                    securityWarning.classList.remove('hidden');
+                    
+                    alert(`
+⚠️ اختبار نظام الأمان - النتيجة: ❌ فاشل
+
+• النطاق الحالي: ${window.location.hostname}
+• حالة النطاق: غير مصرح
+• النطاقات المسموحة:
+  - wacelalorshe.github.io
+  - jedwal.netlify.app
+  - localhost
+  - 127.0.0.1
+
+يرجى الوصول من نطاق مصرح به.
+                    `);
                 }
                 
                 updateSecurityStatus(isValid);
+                updateSystemInfo();
             } else {
-                domainCheck.textContent = '⚠️ نظام الحماية غير متوفر';
-                domainCheck.className = 'domain-check invalid-domain';
-                updateSecurityStatus(false);
+                domainCheck.textContent = '⚠️ جاري تحميل نظام الحماية...';
+                domainCheck.className = 'domain-check';
+                
+                alert(`
+🔧 اختبار نظام الأمان - النتيجة: ⚠️ قيد التحميل
+
+• النطاق الحالي: ${window.location.hostname}
+• حالة نظام الحماية: جاري التحميل
+• الوقت المستغرق: ${Date.now() - systemStartTime}ms
+
+يرجى الانتظار قليلاً...
+                `);
+                
+                // محاولة إعادة الفحص
+                setTimeout(() => {
+                    if (!window.firebaseProtection) {
+                        domainCheck.textContent = '❌ فشل في تحميل نظام الحماية';
+                        domainCheck.className = 'domain-check invalid-domain';
+                        securityWarning.classList.remove('hidden');
+                    }
+                }, 2000);
             }
         }
         
         function checkSecurityStatus() {
+            console.log('🔍 فحص حالة الأمان...');
+            
             if (window.firebaseProtection) {
-                alert(`
-🛡️ حالة نظام الأمان:
+                const info = `
+🔐 حالة نظام الأمان - ${new Date().toLocaleString()}
+
 • النطاق الحالي: ${window.location.hostname}
-• النطاق المسموح: ${window.firebaseProtection.allowedDomain || 'غير محدد'}
+• النطاقات المسموحة: 
+  - wacelalorshe.github.io
+  - jedwal.netlify.app
+  - localhost
+  - 127.0.0.1
+  - wacel-live-pro.web.app
+  - wacel-live-pro.firebaseapp.com
+
 • حالة النطاق: ${window.firebaseProtection.isValidDomain ? '✅ مصرح' : '❌ غير مصرح'}
-• وقت الفحص: ${new Date().toLocaleString()}
+• نظام التشفير: ${window.encryptLink ? '✅ مفعل' : '❌ غير مفعل'}
+• العلامة المائية: ${window.addDataWatermark ? '✅ مفعلة' : '❌ غير مفعلة'}
+
 • مصدر الصفحة: ${window.location.origin}
-                `);
+• وقت التحميل: ${new Date(systemStartTime).toLocaleTimeString()}
+                `;
+                
+                console.log(info);
+                alert(info);
             } else {
-                alert('⚠️ نظام الحماية غير متوفر');
+                alert('⚠️ نظام الحماية غير متوفر\nيرجى إعادة تحميل الصفحة أو التحقق من اتصال الشبكة.');
             }
+        }
+        
+        function checkSystemStatus() {
+            console.log('📊 فحص حالة النظام...');
+            
+            const status = {
+                الحماية: window.firebaseProtection ? '✅ متاحة' : '❌ غير متاحة',
+                النطاق: window.location.hostname,
+                النطاق_مصرح: window.firebaseProtection?.isValidDomain ? '✅ نعم' : '❌ لا',
+                Firebase: window.secureFirebase ? '✅ متصل' : '❌ غير متصل',
+                الوقت: `${Date.now() - systemStartTime}ms`,
+                المتصفح: navigator.userAgent.substring(0, 50) + '...'
+            };
+            
+            let statusText = '📊 حالة النظام:\n\n';
+            for (const [key, value] of Object.entries(status)) {
+                statusText += `• ${key}: ${value}\n`;
+            }
+            
+            console.log(statusText);
+            alert(statusText);
+            
+            // تحديث واجهة المستخدم
+            updateSystemInfo();
         }
         
         // تحديث الإحصائيات
@@ -629,12 +913,12 @@ https://example.com/stream3</textarea>
             }
         }
         
-        // تشغيل التحديثات عند التحميل
+        // تهيئة النظام عند التحميل
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('✅ دوال المساعدة المؤمنة جاهزة');
+            console.log('✅ تحميل لوحة التحكم مع الحماية المحدثة');
             
-            // فحص النطاق تلقائياً
-            setTimeout(testSecuritySystem, 100);
+            // تحديث معلومات النظام
+            updateSystemInfo();
             
             // تحديث النطاق الحالي
             const currentDomain = document.getElementById('current-domain');
@@ -647,12 +931,58 @@ https://example.com/stream3</textarea>
             updateDatabaseStatus(true);
             updateSecurityStatus(true);
             
-            // فحص النطاق
-            const domainCheck = document.getElementById('domain-check');
-            if (domainCheck) {
-                domainCheck.textContent = `🔍 فحص النطاق: ${window.location.hostname}`;
-            }
+            // التحقق من النطاق بعد تحميل جميع السكربتات
+            setTimeout(() => {
+                console.log('🛡️ فحص نظام الحماية بعد التحميل...');
+                
+                if (window.firebaseProtection) {
+                    console.log('✅ نظام الحماية متاح:', {
+                        isValidDomain: window.firebaseProtection.isValidDomain,
+                        domain: window.location.hostname,
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    // تحديث حالة النطاق
+                    const domainCheck = document.getElementById('domain-check');
+                    if (domainCheck) {
+                        if (window.firebaseProtection.isValidDomain) {
+                            domainCheck.textContent = '✅ النطاق مصرح به';
+                            domainCheck.className = 'domain-check valid-domain';
+                            
+                            // تفعيل الوضع المباشر تلقائياً للنطاقات المصرحة
+                            console.log('🚀 تفعيل الوصول المباشر للنطاق المصرح');
+                            enableSecureDirectMode();
+                        } else {
+                            domainCheck.textContent = '❌ النطاق غير مصرح';
+                            domainCheck.className = 'domain-check invalid-domain';
+                            document.getElementById('security-warning').classList.remove('hidden');
+                            
+                            console.warn('⚠️ النطاق غير مصرح، عرض قسم تسجيل الدخول');
+                        }
+                    }
+                } else {
+                    console.warn('⚠️ نظام الحماية لم يتم تحميله بعد - إعادة المحاولة');
+                    
+                    // محاولة لاحقة
+                    setTimeout(() => {
+                        if (!window.firebaseProtection) {
+                            const domainCheck = document.getElementById('domain-check');
+                            if (domainCheck) {
+                                domainCheck.textContent = '❌ فشل في تحميل نظام الحماية';
+                                domainCheck.className = 'domain-check invalid-domain';
+                                document.getElementById('security-warning').classList.remove('hidden');
+                            }
+                        }
+                    }, 2000);
+                }
+                
+                // تحديث معلومات النظام النهائية
+                updateSystemInfo();
+            }, 500);
         });
+        
+        // تحديث معلومات النظام بشكل دوري
+        setInterval(updateSystemInfo, 30000);
     </script>
 </body>
 </html>
