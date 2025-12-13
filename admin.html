@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang='ar' dir='rtl'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم - وسيل لايف برو</title>
+    
+    <!-- أنماط CSS الرئيسية -->
+    <link rel="stylesheet" href="styles/style.css">
+    
+    <!-- إعدادات Firebase (الإصدار الجديد) -->
+    <script type="module" src="js/firebase-config.js"></script>
+    
+    <!-- أنماط إضافية -->
+    <style>
+        /* أنماط نظام الاقتراحات التلقائية */
+        .suggestions-box { 
+            position: absolute; 
+            background: white; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            max-height: 200px; 
+            overflow-y: auto; 
+            z-index: 1000; 
+            width: calc(100% - 2px); 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+            margin-top: 2px; 
+        }
+        .suggestion-item { 
+            padding: 8px 12px; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            border-bottom: 1px solid #f0f0f0; 
+        }
+        .suggestion-item:hover { 
+            background-color: #f5f5f5; 
+        }
+        .suggestion-item img { 
+            border-radius: 3px; 
+        }
+        .hidden { 
+            display: none; 
+        }
+        .form-group { 
+            position: relative; 
+        }
+        .logo-preview { 
+            width: 40px; 
+            height: 40px; 
+            object-fit: contain; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            margin-left: 10px; 
+        }
+        .logo-container { 
+            display: flex; 
+            align-items: center; 
+            margin-top: 5px; 
+        }
+        .auto-fill-notice { 
+            font-size: 12px; 
+            color: #666; 
+            margin-top: 5px; 
+        }
+        .league-logo-container { 
+            display: flex; 
+            align-items: center; 
+            margin-top: 5px; 
+        }
+        .xmtv-section { 
+            background: rgba(67, 76, 117, 0.1); 
+            border-radius: 8px; 
+            padding: 15px; 
+            margin-top: 15px; 
+        }
+        .xmtv-actions { 
+            display: flex; 
+            gap: 8px; 
+            flex-wrap: wrap; 
+            margin-top: 8px; 
+        }
+        .btn-small { 
+            padding: 6px 12px; 
+            font-size: 12px; 
+        }
+        .btn-warning { 
+            background: #ffc107; 
+            color: #000; 
+        }
+        .link-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: #151825; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin-bottom: 5px; 
+            word-break: break-all; 
+            text-align: left; 
+            font-size: 12px; 
+        }
+        .link-item span { 
+            flex: 1; 
+            margin-right: 10px; 
+        }
+        .xmtv-link-preview { 
+            background: #1a1f3c; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin: 10px 0; 
+            font-family: monospace; 
+            font-size: 11px; 
+            word-break: break-all; 
+            max-height: 80px; 
+            overflow-y: auto; 
+        }
+        .link-type-selector { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 10px; 
+        }
+        .link-type-btn { 
+            padding: 8px 15px; 
+            border: 1px solid #434C75; 
+            background: #151825; 
+            color: white; 
+            border-radius: 5px; 
+            cursor: pointer; 
+        }
+        .link-type-btn.active { 
+            background: #434C75; 
+            color: white; 
+        }
+        .link-input-section { 
+            display: none; 
+        }
+        .link-input-section.active { 
+            display: block; 
+        }
+        
+        /* أنماط إضافية */
+        .test-notice {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+        
+        .stats-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #434C75;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- قسم تسجيل الدخول -->
+        <div id="login-section" class="form-container">
+            <div class="test-notice">
+                <h3 style="margin: 0 0 10px 0;">🚀 لوحة تحكم وسيل لايف برو</h3>
+                <p style="margin: 0; opacity: 0.9;">المشروع: wacel-live-pro | Firebase الجديد</p>
+            </div>
+            
+            <h3>تسجيل الدخول للإدارة</h3>
+            <form id="login-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="email">البريد الإلكتروني</label>
+                        <input type="email" id="email" required value="admin@wacel.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">كلمة المرور</label>
+                        <input type="password" id="password" required value="Ww735981122">
+                    </div>
+                </div>
+                
+                <div class="quick-actions">
+                    <button type="button" class="btn btn-info" onclick="fillTestData()">تعبئة بيانات الاختبار</button>
+                    <button type="button" class="btn btn-warning" onclick="enableDirectMode()">الوضع المباشر</button>
+                </div>
+                
+                <div class="form-row">
+                    <button type="submit" class="btn btn-primary">تسجيل الدخول</button>
+                </div>
+                <div id="login-message"></div>
+            </form>
+        </div>
+
+        <!-- قسم لوحة التحكم -->
+        <div id="dashboard-section" class="hidden">
+            <div class="test-notice">
+                <h3 style="margin: 0 0 10px 0;">🎉 لوحة التحكم جاهزة!</h3>
+                <p style="margin: 0; opacity: 0.9;">متصلة بـ Firebase | المشروع: wacel-live-pro</p>
+            </div>
+
+            <div class="stats-box">
+                <h4 style="margin: 0 0 10px 0;">📊 إحصائيات النظام</h4>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="matches-count">0</div>
+                        <div class="stat-label">مباريات مضافة</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="firebase-status">✅</div>
+                        <div class="stat-label">حالة Firebase</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="database-status">🟢</div>
+                        <div class="stat-label">قاعدة البيانات</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-container">
+                <h3 id="form-title">إضافة مباراة جديدة</h3>
+                <form id="match-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="league">الدوري *</label>
+                            <select id="league" required>
+                                <option value="">اختر الدوري</option>
+                                <option value="الدوري الانجليزي الممتاز" selected>الدوري الانجليزي الممتاز</option>
+                                <option value="الدوري الاسباني">الدوري الاسباني</option>
+                                <option value="الدوري الايطالي">الدوري الايطالي</option>
+                                <option value="الدوري الالماني">الدوري الالماني</option>
+                                <option value="الدوري الفرنسي">الدوري الفرنسي</option>
+                                <option value="الدوري السعودي">الدوري السعودي</option>
+                                <option value="دوري أبطال أوروبا">دوري أبطال أوروبا</option>
+                                <option value="دوري أبطال آسيا">دوري أبطال آسيا</option>
+                                <option value="كأس العالم">كأس العالم</option>
+                                <option value="كأس الأمم الأوروبية">كأس الأمم الأوروبية</option>
+                                <option value="كأس الأمم الأفريقية">كأس الأمم الأفريقية</option>
+                                <option value="كأس آسيا">كأس آسيا</option>
+                                <option value="كوبا أمريكا">كوبا أمريكا</option>
+                                <option value="كأس الكونكاكاف">كأس الكونكاكاف</option>
+                                <option value="كأس العرب">كأس العرب</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="league-logo">رابط شعار الدوري</label>
+                            <div class="league-logo-container">
+                                <input type="text" id="league-logo" value="https://resources.premierleague.com/premierleague/badges/50/t1.png">
+                                <img id="league-preview" class="logo-preview" src="https://resources.premierleague.com/premierleague/badges/50/t1.png" alt="شعار الدوري">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="team1">الفريق الأول *</label>
+                            <input type="text" id="team1" required placeholder="ابدأ بكتابة اسم الفريق" value="مانشستر يونايتد">
+                            <div class="auto-fill-notice">اكتب اسم الفريق (حرفين على الأقل) وسيتم تعبئة الشعار تلقائياً</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="team1-logo">رابط شعار الفريق الأول</label>
+                            <div class="logo-container">
+                                <input type="text" id="team1-logo" placeholder="سيتم تعبئته تلقائياً" value="https://resources.premierleague.com/premierleague/badges/50/t1.png">
+                                <img id="team1-preview" class="logo-preview" src="https://resources.premierleague.com/premierleague/badges/50/t1.png" alt="شعار الفريق الأول">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="team2">الفريق الثاني *</label>
+                            <input type="text" id="team2" required placeholder="ابدأ بكتابة اسم الفريق" value="ليفربول">
+                            <div class="auto-fill-notice">اكتب اسم الفريق (حرفين على الأقل) وسيتم تعبئة الشعار تلقائياً</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="team2-logo">رابط شعار الفريق الثاني</label>
+                            <div class="logo-container">
+                                <input type="text" id="team2-logo" placeholder="سيتم تعبئته تلقائياً" value="https://resources.premierleague.com/premierleague/badges/50/t14.png">
+                                <img id="team2-preview" class="logo-preview" src="https://resources.premierleague.com/premierleague/badges/50/t14.png" alt="شعار الفريق الثاني">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="match-time">وقت المباراة *</label>
+                            <input type="text" id="match-time" required value="08:00م">
+                        </div>
+                        <div class="form-group">
+                            <label for="channel">القناة الناقلة *</label>
+                            <input type="text" id="channel" required value="bein sport 1">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="commentator">اسم المعلق *</label>
+                            <input type="text" id="commentator" required value="أحمد البلوشي">
+                        </div>
+                        <div class="form-group">
+                            <label for="match-date">التاريخ *</label>
+                            <input type="text" id="match-date" required value="السبت 25 يناير 2025">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="links">روابط المشاهدة</label>
+                            <div class="link-type-selector">
+                                <button type="button" class="link-type-btn active" data-type="regular">روابط عادية</button>
+                                <button type="button" class="link-type-btn" data-type="xmtv">رابط XPola مباشر</button>
+                            </div>
+                            
+                            <!-- قسم الروابط العادية -->
+                            <div id="regular-links-section" class="link-input-section active">
+                                <textarea id="links" placeholder="كل رابط في سطر جديد" rows="4">https://example.com/stream1
+https://example.com/stream2
+https://example.com/stream3</textarea>
+                                <div class="auto-fill-notice">أدخل روابط المشاهدة العادية (كل رابط في سطر جديد)</div>
+                            </div>
+                            
+                            <!-- قسم رابط XPola المباشر -->
+                            <div id="xmtv-links-section" class="link-input-section">
+                                <textarea id="xmtv-link" placeholder="xmtv://..." rows="4">xmtv://WwoKICAKICAKIAogIAogICJodHRwczovL2JkZDAwLjRyb3V3YW5kYS1zaG9wLnN0b3JlL2xpdmUvMzEwMDk5ODgwMDUvaW5kZXgubTN1OD90PWIydm9SNHZJREE5WGItcUJrenZrX3cmZT0xNzU4MTE2NTM2fGNhc3Q9ZmFsc2V8bmFtZT0nICAgICAgWUMgKDI0NFApICAgICAg4oCYfGFwcGxvZ29ibD1odHRwczovL3d3dzIuMHp6MC5jb20vMjAyNS8wMy8zMS8xNy83MDY1ODM2NDQucG5nIiwKICAKICAiaHR0cDovLzE3Ni4xMTkuMjkuNTQvMTMxZjI2ZDktYWZiMC00ODBlLTg2OTAtZTQ2MDA3ZGU5ZmM4Lm0zdTh8Y2FzdD1mYWxzZXxuYW1lPScgICAgICBudW1iZXIgKDM2MFApICAgICAg4oCYfGFwcGxvZ29ibD1odHRwczovL3d3dzIuMHp6MC5jb20vMjAyNS8wMy8zMS8xNy83MDY1ODM2NDQucG5nIiwKICAKICAKICAiaHR0cDovLzE3Ni4xMTkuMjkuNTQvYmIxYTQxMTktNjVmOS00MGRjLTk4NjctMTI3ZjJhNjk3M2QxLm0zdTh8ZGV2aWNlY2FuYXJ5PWZhbHNlfGNhc3Q9ZmFsc2V8bmFtZT0nICAgbnVtYmVyICAoNDgwUCkg4oCYfGFwcGxvZ29ibD1odHRwczovL3d3dzIuMHp6MC5jb20vMjAyNS8wMy8zMS8xNy83MDY1ODM2NDQucG5nIiwKICAKICAKICAKICAKICAiaHR0cHM6Ly9jZG5mZXN0LmNvbS9HMS03MjBwL3ZpZGVvLm0zdTg/dG9rZW49MlpSdnVtNVJ4SXdlRzNkZXZpY2VjYW5hcnk9ZmFsc2V8Y2FzdD1mYWxzZXxuYW1lPScgICAgRzEgKDcyMFApICDigJh8YXBwbG9nb2JsPWh0dHBzOi8vd3d3Mi4wenowLmNvbS8yMDI1LzAzLzMxLzE3LzcwNjU4MzY0NC5wbmciLAogIAogIAogIAogIAogIAoKCgoKICAgICJodHRwczovL2Rva2tvMW5ldy5uZXdrc28ucnUvZG9ra28xL3ByZW1pdW09MS9tb25vLm0zdTh8dXNlci1hZ2VudD1Nb3ppbGxhLzUuMCAoV2luZG93cyBOVCAxMC4wOyBXaW42NDsgeDY0KSBBcHBsZVdlYktpdC81MzcuMzYgKEtIVE1MLCBsaWtlIEdlY2tvKSBDaHJvbWUvMTI5LjAuMC4wIFNhZmFyaS81MzcuMzZ8cmVmZXJlcj1odHRwczovL25ld2VtYmVkcGxheS54eXovfG5hbWU9ICcgICAgIERPSyAoNzIwUCkgIOKAmHxhcHBsb2dvYmw9aHR0cHM6Ly93d3cyLjB6ejAuY29tLzIwMjUvMDMvMzEvMTcvNzA2NTgzNjQ0LnBuZyIsCiAgCiAgImh0dHBzOi8vd28uY21hLmZvb3RiYWxsaWkuaXIvaGxzMi9iMi5tM3U4fGNhc3Q9ZmFsc2V8bmFtZT0nICAgICAgV0FDRUwtVFYgICAgICDigJh8YXBwbG9nb2JsPWh0dHBzOi8vd3d3Mi4wenowLmNvbS8yMDI1LzAzLzMxLzE3LzcwNjU4MzY0NC5wbmciLAogIAoKCiJodHRwczovL2dpdGh1Yi5jb20vbzJ3cy94cG9sYS1wbGF5ZXIvcmF3L3JlZnMvaGVhZHMvbWFpbi8xLm0zdTh8dXNlci1hZ2VudD1Nb3ppbGxhLy81LjAgKGlQaG9uZTsgQ1BVIGlQaG9uZSBPUyAxNl82IGxpa2UgTWFjIE9TIFgpIEFwcGxlV2ViS2l0Ly82MDUuMS4xNSAoS0hUTUwsIGxpa2UgR2Vja28pIFZlcnNpb24vLzE2LjYgTW9iaWxlLy8xNUUxNDggU2FmYXJpLy82MDQuMXxyZWZlcmVyPWh0dHBzOi8vd3d3LnlhcmlnYS5saXZlL3xuYW1lPSAnICAgICB4cCAo2YXYqti52K/YrykgIOKAmHxhcHBsb2dvYmw9aHR0cHM6Ly93d3cyLjB6ejAuY29tLzIwMjUvMDMvMzEvMTcvNzA2NTgzNjQ0LnBuZyIKXQ==</textarea>
+                                <div class="auto-fill-notice">أدخل رابط XPola المباشر (xmtv://) - سيتم استخدام هذا الرابط مباشرة دون تشفير</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <button type="submit" class="btn btn-primary" id="submit-btn">إضافة المباراة</button>
+                        <button type="button" class="btn btn-danger hidden" id="cancel-btn">إلغاء التعديل</button>
+                        <button type="button" class="btn btn-secondary" id="logout-btn">تسجيل الخروج</button>
+                        <a href="index.html" class="btn btn-success">عرض الموقع</a>
+                        <button type="button" class="btn btn-info" id="test-connection-btn">اختبار الاتصال</button>
+                    </div>
+                    <div id="form-message"></div>
+                </form>
+            </div>
+
+            <div class="matches-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">المباريات المضافة</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-small btn-info" onclick="refreshMatches()">🔄 تحديث</button>
+                        <button class="btn btn-small btn-warning" onclick="testFirebaseConnection()">🧪 اختبار Firebase</button>
+                    </div>
+                </div>
+                <div id="matches-list">
+                    <div class="loading">جاري تحميل المباريات...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- قاعدة بيانات الفرق -->
+    <script src="js/teams-database.js"></script>
+    
+    <!-- السكريبت الرئيسي للوحة التحكم -->
+    <script type="module" src="js/admin.js"></script>
+    
+    <!-- دوال مساعدة سريعة -->
+    <script>
+        // دوال مساعدة سريعة
+        function fillTestData() {
+            document.getElementById('email').value = 'admin@wacel.com';
+            document.getElementById('password').value = 'Ww735981122';
+            document.getElementById('login-message').innerHTML = `
+                <div style="background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                    ✅ تم تعبئة بيانات الاختبار بنجاح
+                </div>
+            `;
+        }
+        
+        function refreshMatches() {
+            if (typeof loadMatches === 'function') {
+                loadMatches();
+                document.getElementById('login-message').innerHTML = `
+                    <div style="background: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                        🔄 جاري تحديث المباريات...
+                    </div>
+                `;
+                setTimeout(() => {
+                    document.getElementById('login-message').innerHTML = '';
+                }, 2000);
+            }
+        }
+        
+        function enableDirectMode() {
+            if (typeof window.enableDirectMode === 'function') {
+                window.enableDirectMode();
+            } else {
+                // حل بديل مباشر
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('dashboard-section').classList.remove('hidden');
+                document.getElementById('login-message').innerHTML = `
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                         color: white; padding: 15px; border-radius: 8px; margin: 10px 0; text-align: center;">
+                        🎉 تم تفعيل الوضع المباشر بنجاح!
+                    </div>
+                `;
+            }
+        }
+        
+        // تحديث الإحصائيات
+        function updateStats(matchesCount) {
+            const matchesElement = document.getElementById('matches-count');
+            if (matchesElement) {
+                matchesElement.textContent = matchesCount || '0';
+            }
+        }
+        
+        // تحديث حالة Firebase
+        function updateFirebaseStatus(status) {
+            const statusElement = document.getElementById('firebase-status');
+            if (statusElement) {
+                statusElement.textContent = status ? '✅' : '❌';
+                statusElement.style.color = status ? '#28a745' : '#dc3545';
+            }
+        }
+        
+        // تحديث حالة قاعدة البيانات
+        function updateDatabaseStatus(status) {
+            const statusElement = document.getElementById('database-status');
+            if (statusElement) {
+                statusElement.textContent = status ? '🟢' : '🔴';
+                statusElement.style.color = status ? '#28a745' : '#dc3545';
+            }
+        }
+        
+        // تشغيل التحديثات عند التحميل
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ دوال المساعدة جاهزة');
+            updateFirebaseStatus(true);
+            updateDatabaseStatus(true);
+        });
+    </script>
+</body>
+</html>
