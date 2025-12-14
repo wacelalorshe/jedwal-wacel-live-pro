@@ -1,141 +1,142 @@
 // ============================================
-// admin.js - الإصدار المصحح مع إصلاح Firebase
+// admin.js
+// نظام إدارة متكامل مع دعم التعديل والإشعارات والمباريات
 // ============================================
 
-// 🔹 تكوين Firebase المستخدم في الصفحة
-const adminFirebaseConfig = {
-    apiKey: "AIzaSyAkgEiYYlmpMe0NLewulheovlTQMz5C980",
-    authDomain: "bein-42f9e.firebaseapp.com",
-    projectId: "bein-42f9e",
-    storageBucket: "bein-42f9e.firebasestorage.app",
-    messagingSenderId: "143741167050",
-    appId: "1:143741167050:web:922d3a0cddb40f67b21b33",
-    measurementId: "G-JH198SKCFS"
-};
-
+// ============================================
+// الجزء 1: تعريف فئة AdminManager
+// ============================================
 class AdminManager {
     constructor() {
-        this.isAuthenticated = false;
-        this.firebaseAvailable = false;
-        this.firestoreAvailable = false;
-        this.sections = [];
-        this.channels = [];
-        this.notifications = [];
-        this.matches = [];
-        this.editingSection = null;
-        this.editingChannel = null;
-        this.editingNotification = null;
-        this.editingMatch = null;
-        this.firebaseApp = null;
-        this.firestoreDB = null;
-        this.init();
+        this.isAuthenticated = false;                 // 🔹 حالة تسجيل الدخول
+        this.firebaseAvailable = false;               // 🔹 حالة اتصال Firebase
+        this.firestoreAvailable = false;              // 🔹 حالة اتصال Firestore
+        this.sections = [];                           // 🔹 مصفوفة الأقسام
+        this.channels = [];                           // 🔹 مصفوفة القنوات
+        this.notifications = [];                      // 🔹 مصفوفة الإشعارات
+        this.matches = [];                            // 🔹 مصفوفة المباريات (جديد)
+        this.editingSection = null;                   // 🔹 القسم قيد التعديل
+        this.editingChannel = null;                   // 🔹 القناة قيد التعديل
+        this.editingNotification = null;              // 🔹 الإشعار قيد التعديل
+        this.editingMatch = null;                     // 🔹 المباراة قيد التعديل (جديد)
+        this.init();                                   // 🔹 بدء التهيئة
     }
 
+    // 🔹 الدالة: init()
+    // 🔹 الوظيفة: تهيئة النظام
+    // 🔹 الاستخدام: يتم استدعاؤها تلقائياً عند إنشاء الكائن
     async init() {
-        console.log('🔧 بدء تشغيل لوحة التحكم...');
-        this.checkAuthentication();
-        await this.checkFirebase();
-        if (this.isAuthenticated && this.firestoreAvailable) {
-            this.setupUI();
-        }
+        console.log('AdminManager initializing...');
+        this.checkAuthentication();                    // 🔹 التحقق من المصادقة
+        await this.checkFirebase();                     // 🔹 التحقق من Firebase
+        this.setupUI();                                 // 🔹 إعداد واجهة المستخدم
     }
+
+    // ============================================
+    // الجزء 2: دوال المصادقة والاتصال
+    // ============================================
 
     // 🔹 الدالة: checkAuthentication()
-    // 🔹 الوظيفة: التحقق من تسجيل الدخول
+    // 🔹 الوظيفة: التحقق من حالة تسجيل الدخول
+    // 🔹 الاستخدام: عند تحميل لوحة التحكم
     checkAuthentication() {
-        const isAdmin = localStorage.getItem('isAdmin') === 'true';
-        const user = localStorage.getItem('user');
+        const storedAuth = localStorage.getItem('adminAuth');
+        const storedEmail = localStorage.getItem('adminEmail');
         
-        this.isAuthenticated = isAdmin && user;
+        this.isAuthenticated = storedAuth === 'true' && storedEmail;
         
         if (this.isAuthenticated) {
-            console.log('👤 المستخدم مسجل دخول:', JSON.parse(user).email);
+            console.log('User authenticated:', storedEmail);
             this.showAdminPanel();
         } else {
-            console.log('❌ المستخدم غير مسجل دخول');
+            console.log('User not authenticated');
             this.showLoginRequired();
         }
     }
 
     // 🔹 الدالة: checkFirebase()
-    // 🔹 الوظيفة: تهيئة واختبار اتصال Firebase
+    // 🔹 الوظيفة: التحقق من اتصال Firebase
+    // 🔹 الاستخدام: عند بدء النظام
     async checkFirebase() {
         try {
-            console.log('🔥 محاولة تهيئة Firebase...');
-            
-            // 🔹 التحقق من وجود مكتبة Firebase
             if (typeof firebase === 'undefined') {
-                throw new Error('Firebase SDK غير محمل');
+                this.showFirebaseStatus('Firebase غير متاح', 'error');
+                return;
             }
+
+            await this.initializeFirebase();
+            const db = this.getDB();
             
-            // 🔹 محاولة استخدام التطبيق الحالي أو إنشاء جديد
-            try {
-                if (!firebase.apps.length) {
-                    console.log('🚀 إنشاء تطبيق Firebase جديد...');
-                    this.firebaseApp = firebase.initializeApp(adminFirebaseConfig, 'AdminApp');
-                } else {
-                    console.log('✅ استخدام تطبيق Firebase موجود');
-                    this.firebaseApp = firebase.apps[0];
-                }
-                
-                // 🔹 الحصول على Firestore
-                this.firestoreDB = firebase.firestore(this.firebaseApp);
-                
-                // 🔹 إعدادات إضافية
-                if (this.firestoreDB.settings) {
-                    this.firestoreDB.settings({
-                        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-                    });
-                }
-                
-                // 🔹 اختبار الاتصال
-                console.log('🧪 اختبار اتصال قاعدة البيانات...');
-                const testDoc = this.firestoreDB.collection('test_connection').doc('test');
-                await testDoc.set({
-                    test: true,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    message: 'Testing admin connection'
-                });
-                
-                await testDoc.delete();
-                
-                this.firebaseAvailable = true;
-                this.firestoreAvailable = true;
-                
-                console.log('✅ Firebase مهيأ وتم اختباره بنجاح');
-                this.showFirebaseStatus('الاتصال بقاعدة البيانات ناجح', 'success');
-                
-            } catch (initError) {
-                console.error('❌ فشل تهيئة Firebase:', initError);
-                throw initError;
-            }
+            // 🔹 اختبار الاتصال
+            const testDoc = db.collection('test_connection').doc('test');
+            await testDoc.set({ 
+                test: true, 
+                timestamp: new Date(),
+                message: 'Testing Firestore connection'
+            });
+            await testDoc.delete();
+            
+            this.firebaseAvailable = true;
+            this.firestoreAvailable = true;
+            this.showFirebaseStatus('الاتصال بقاعدة البيانات ناجح', 'success');
             
         } catch (error) {
-            console.error('❌ فشل اتصال Firebase:', error);
+            console.error('Firebase connection test failed:', error);
             
             if (error.code === 'permission-denied') {
                 this.showFirebaseStatus('صلاحيات غير كافية - تحقق من قواعد Firestore', 'error');
             } else if (error.code === 'unavailable') {
                 this.showFirebaseStatus('لا يمكن الاتصال بقاعدة البيانات', 'warning');
-            } else if (error.message && error.message.includes('No Firebase App')) {
-                this.showFirebaseStatus('Firebase غير مهيأ - جاري إعادة المحاولة...', 'warning');
-                this.retryFirebaseConnection();
             } else {
                 this.showFirebaseStatus('خطأ في الاتصال بقاعدة البيانات: ' + error.message, 'error');
             }
             
             this.firebaseAvailable = false;
             this.firestoreAvailable = false;
-            
-            // 🔹 في حالة الفشل، استخدم التخزين المحلي
-            if (this.isAuthenticated) {
-                this.setupUI();
-            }
         }
     }
 
+    // 🔹 الدالة: initializeFirebase()
+    // 🔹 الوظيفة: تهيئة Firebase
+    // 🔹 الاستخدام: عند التحقق من الاتصال
+    async initializeFirebase() {
+        return new Promise((resolve, reject) => {
+            try {
+                const firebaseConfig = {
+                    apiKey: "AIzaSyAkgEiYYlmpMe0NLewulheovlTQMz5C980",
+                    authDomain: "bein-42f9e.firebaseapp.com",
+                    projectId: "bein-42f9e",
+                    storageBucket: "bein-42f9e.firebasestorage.app",
+                    messagingSenderId: "143741167050",
+                    appId: "1:143741167050:web:922d3a0cddb40f67b21b33",
+                    measurementId: "G-JH198SKCFS"
+                };
+
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig, 'AdminApp');
+                }
+                
+                resolve(true);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    // 🔹 الدالة: getDB()
+    // 🔹 الوظيفة: الحصول على كائن قاعدة البيانات
+    // 🔹 الاستخدام: عند الحاجة للتعامل مع Firestore
+    getDB() {
+        return firebase.firestore();
+    }
+
+    // ============================================
+    // الجزء 3: دوال عرض الواجهة
+    // ============================================
+
     // 🔹 الدالة: showFirebaseStatus()
     // 🔹 الوظيفة: عرض حالة اتصال Firebase
+    // 🔹 الاستخدام: عند التحقق من الاتصال
     showFirebaseStatus(message, type) {
         const statusElement = document.getElementById('firebaseStatus');
         const statusText = document.getElementById('firebaseStatusText');
@@ -156,64 +157,28 @@ class AdminManager {
         }
     }
 
-    // 🔹 الدالة: getDB()
-    // 🔹 الوظيفة: الحصول على كائن قاعدة البيانات
-    getDB() {
-        if (!this.firestoreDB) {
-            console.warn('⚠️ Firestore غير مهيأ. جاري التهيئة...');
-            this.retryFirebaseConnection();
-        }
-        return this.firestoreDB;
-    }
-
-    // 🔹 الدالة: retryFirebaseConnection()
-    // 🔹 الوظيفة: إعادة محاولة الاتصال بـ Firebase
-    async retryFirebaseConnection() {
-        console.log('🔄 إعادة محاولة الاتصال بـ Firebase...');
-        this.showFirebaseStatus('جاري إعادة الاتصال بقاعدة البيانات...', 'warning');
-        
-        // 🔹 انتظر قليلاً قبل إعادة المحاولة
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        await this.checkFirebase();
-        
-        if (this.firestoreAvailable) {
-            await this.loadDataFromFirestore();
-            this.showAlert('تم إعادة الاتصال بقاعدة البيانات بنجاح', 'success');
-        }
-    }
-
     // 🔹 الدالة: showAdminPanel()
     // 🔹 الوظيفة: عرض لوحة التحكم
+    // 🔹 الاستخدام: بعد تسجيل الدخول الناجح
     showAdminPanel() {
-        const adminPanel = document.getElementById('adminPanel');
-        const loginRequired = document.getElementById('loginRequired');
-        
-        if (adminPanel && loginRequired) {
-            adminPanel.style.display = 'block';
-            loginRequired.style.display = 'none';
-            this.loadAdminInterface();
-        }
+        document.getElementById('adminPanel').style.display = 'block';
+        document.getElementById('loginRequired').style.display = 'none';
+        this.loadAdminInterface();
     }
 
     // 🔹 الدالة: showLoginRequired()
     // 🔹 الوظيفة: عرض رسالة تسجيل الدخول المطلوب
+    // 🔹 الاستخدام: عند عدم تسجيل الدخول
     showLoginRequired() {
-        const adminPanel = document.getElementById('adminPanel');
-        const loginRequired = document.getElementById('loginRequired');
-        
-        if (adminPanel && loginRequired) {
-            adminPanel.style.display = 'none';
-            loginRequired.style.display = 'block';
-        }
+        document.getElementById('adminPanel').style.display = 'none';
+        document.getElementById('loginRequired').style.display = 'block';
     }
 
     // 🔹 الدالة: loadAdminInterface()
     // 🔹 الوظيفة: تحميل واجهة لوحة التحكم
+    // 🔹 الاستخدام: بعد عرض لوحة التحكم
     loadAdminInterface() {
         const adminPanel = document.getElementById('adminPanel');
-        
-        if (!adminPanel) return;
         
         adminPanel.innerHTML = `
             <!-- 🔹 حالة اتصال Firebase -->
@@ -225,7 +190,7 @@ class AdminManager {
                             <p id="dbStatusText" class="mb-0">
                                 ${this.firestoreAvailable ? 
                                     '<span class="text-success">✅ متصل بقاعدة البيانات</span>' : 
-                                    '<span class="text-warning">⚠️ قاعدة البيانات غير متاحة - استخدام التخزين المحلي</span>'
+                                    '<span class="text-warning">⚠️ قاعدة البيانات غير متاحة</span>'
                                 }
                             </p>
                             ${!this.firestoreAvailable ? `
@@ -233,9 +198,6 @@ class AdminManager {
                                     <button class="btn btn-sm btn-warning me-2" onclick="adminManager.retryFirebaseConnection()">
                                         <i class="uil uil-refresh"></i> إعادة المحاولة
                                     </button>
-                                    <a href="firebase-rules-help.html" class="btn btn-sm btn-info" target="_blank">
-                                        <i class="uil uil-question-circle"></i> مساعدة في الإعداد
-                                    </a>
                                 </div>
                             ` : ''}
                         </div>
@@ -333,8 +295,109 @@ class AdminManager {
         this.setupTabsEvents();
     }
 
+    // ============================================
+    // الجزء 4: دوال تحميل البيانات
+    // ============================================
+
+    // 🔹 الدالة: loadData()
+    // 🔹 الوظيفة: تحميل جميع البيانات من قاعدة البيانات
+    // 🔹 الاستخدام: عند بدء لوحة التحكم
+    async loadData() {
+        if (this.firestoreAvailable) {
+            await this.loadDataFromFirestore();
+        } else {
+            this.loadDataFromLocalStorage();
+        }
+    }
+
+    // 🔹 الدالة: loadDataFromFirestore()
+    // 🔹 الوظيفة: تحميل البيانات من Firebase
+    // 🔹 الاستخدام: عندما يكون اتصال Firebase متاحاً
+    async loadDataFromFirestore() {
+        try {
+            const db = this.getDB();
+            
+            // 🔹 تحميل الأقسام
+            const sectionsSnapshot = await db.collection('sections').orderBy('order').get();
+            this.sections = sectionsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            
+            // 🔹 تحميل القنوات
+            const channelsSnapshot = await db.collection('channels').orderBy('order').get();
+            this.channels = channelsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            
+            // 🔹 تحميل المباريات
+            const matchesSnapshot = await db.collection('matches').orderBy('matchDate').get();
+            this.matches = matchesSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            
+            // 🔹 تحميل الإشعارات
+            const notificationsSnapshot = await db.collection('notifications').get();
+            this.notifications = notificationsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            
+            this.renderData();
+            console.log('✅ تم تحميل جميع البيانات من Firebase');
+            
+        } catch (error) {
+            console.error('❌ خطأ في تحميل البيانات:', error);
+            this.loadDataFromLocalStorage();
+        }
+    }
+
+    // 🔹 الدالة: loadDataFromLocalStorage()
+    // 🔹 الوظيفة: تحميل البيانات من التخزين المحلي
+    // 🔹 الاستخدام: عند عدم توفر اتصال Firebase
+    loadDataFromLocalStorage() {
+        try {
+            const savedSections = localStorage.getItem('bein_sections');
+            const savedChannels = localStorage.getItem('bein_channels');
+            const savedMatches = localStorage.getItem('bein_matches');
+            const savedNotifications = localStorage.getItem('bein_notifications');
+            
+            if (savedSections) this.sections = JSON.parse(savedSections);
+            if (savedChannels) this.channels = JSON.parse(savedChannels);
+            if (savedMatches) this.matches = JSON.parse(savedMatches);
+            if (savedNotifications) this.notifications = JSON.parse(savedNotifications);
+            
+            this.renderData();
+            console.log('📱 تم تحميل البيانات من التخزين المحلي');
+            
+        } catch (error) {
+            console.error('❌ خطأ في تحميل البيانات المحلية:', error);
+        }
+    }
+
+    // 🔹 الدالة: saveToLocalStorage()
+    // 🔹 الوظيفة: حفظ البيانات في التخزين المحلي
+    // 🔹 الاستخدام: عند إضافة أو تعديل بيانات
+    saveToLocalStorage() {
+        try {
+            localStorage.setItem('bein_sections', JSON.stringify(this.sections));
+            localStorage.setItem('bein_channels', JSON.stringify(this.channels));
+            localStorage.setItem('bein_matches', JSON.stringify(this.matches));
+            localStorage.setItem('bein_notifications', JSON.stringify(this.notifications));
+        } catch (error) {
+            console.error('❌ خطأ في حفظ البيانات محلياً:', error);
+        }
+    }
+
+    // ============================================
+    // الجزء 5: دوال عرض التبويبات
+    // ============================================
+
     // 🔹 الدالة: loadSectionsTab()
-    // 🔹 الوظيفة: تحميل تبويب الأقسام
+    // 🔹 الوظيفة: تحميل واجهة تبويب الأقسام
+    // 🔹 الاستخدام: عند النقر على تبويب الأقسام
     loadSectionsTab() {
         return `
             <!-- 🔹 نموذج إضافة/تعديل قسم -->
@@ -346,7 +409,7 @@ class AdminManager {
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form id="sectionForm" onsubmit="event.preventDefault(); adminManager.saveSection(event);">
+                    <form id="sectionForm" onsubmit="adminManager.saveSection(event)">
                         <input type="hidden" id="sectionId">
                         <div class="row">
                             <div class="col-md-6">
@@ -413,7 +476,8 @@ class AdminManager {
     }
 
     // 🔹 الدالة: loadChannelsTab()
-    // 🔹 الوظيفة: تحميل تبويب القنوات
+    // 🔹 الوظيفة: تحميل واجهة تبويب القنوات
+    // 🔹 الاستخدام: عند النقر على تبويب القنوات
     loadChannelsTab() {
         return `
             <!-- 🔹 نموذج إضافة/تعديل قناة -->
@@ -425,7 +489,7 @@ class AdminManager {
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form id="channelForm" onsubmit="event.preventDefault(); adminManager.saveChannel(event);">
+                    <form id="channelForm" onsubmit="adminManager.saveChannel(event)">
                         <input type="hidden" id="channelId">
                         <div class="row">
                             <div class="col-md-6">
@@ -495,7 +559,8 @@ class AdminManager {
     }
 
     // 🔹 الدالة: loadMatchesTab()
-    // 🔹 الوظيفة: تحميل تبويب المباريات
+    // 🔹 الوظيفة: تحميل واجهة تبويب المباريات
+    // 🔹 الاستخدام: عند النقر على تبويب المباريات
     loadMatchesTab() {
         return `
             <!-- 🔹 نموذج إضافة/تعديل مباراة -->
@@ -507,7 +572,7 @@ class AdminManager {
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form id="matchForm" onsubmit="event.preventDefault(); adminManager.saveMatch(event);">
+                    <form id="matchForm" onsubmit="adminManager.saveMatch(event)">
                         <input type="hidden" id="matchId">
                         <div class="row">
                             <div class="col-md-6">
@@ -533,11 +598,12 @@ class AdminManager {
                                     <label class="form-label">وقت المباراة *</label>
                                     <input type="time" id="matchTime" class="form-control" required>
                                 </div>
+                                <!-- 🔹 حل المشكلة هنا: إضافة id للعنصر select -->
                                 <div class="form-group mb-3">
                                     <label class="form-label">القناة الناقلة *</label>
                                     <select id="matchChannel" class="form-control" required>
                                         <option value="">اختر القناة الناقلة</option>
-                                        <!-- سيتم تعبئة القنوات هنا تلقائياً -->
+                                        <!-- 🔹 سيتم تعبئة القنوات هنا تلقائياً -->
                                     </select>
                                 </div>
                             </div>
@@ -586,7 +652,8 @@ class AdminManager {
     }
 
     // 🔹 الدالة: loadNotificationsTab()
-    // 🔹 الوظيفة: تحميل تبويب الإشعارات
+    // 🔹 الوظيفة: تحميل واجهة تبويب الإشعارات
+    // 🔹 الاستخدام: عند النقر على تبويب الإشعارات
     loadNotificationsTab() {
         return `
             <!-- 🔹 نموذج إضافة/تعديل إشعار -->
@@ -598,7 +665,7 @@ class AdminManager {
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form id="notificationForm" onsubmit="event.preventDefault(); adminManager.saveNotification(event);">
+                    <form id="notificationForm" onsubmit="adminManager.saveNotification(event)">
                         <input type="hidden" id="notificationId">
                         <div class="row">
                             <div class="col-md-6">
@@ -665,105 +732,33 @@ class AdminManager {
         `;
     }
 
-    // 🔹 الدالة: loadData()
-    // 🔹 الوظيفة: تحميل البيانات
-    async loadData() {
-        if (this.firestoreAvailable) {
-            await this.loadDataFromFirestore();
-        } else {
-            this.loadDataFromLocalStorage();
-        }
-    }
-
-    // 🔹 الدالة: loadDataFromFirestore()
-    // 🔹 الوظيفة: تحميل البيانات من Firebase
-    async loadDataFromFirestore() {
-        try {
-            if (!this.firestoreDB) {
-                throw new Error('Firestore غير متاح');
-            }
-            
-            const db = this.firestoreDB;
-            
-            // 🔹 تحميل الأقسام
-            const sectionsSnapshot = await db.collection('sections').orderBy('order').get();
-            this.sections = sectionsSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            
-            // 🔹 تحميل القنوات
-            const channelsSnapshot = await db.collection('channels').orderBy('order').get();
-            this.channels = channelsSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            
-            // 🔹 تحميل المباريات
-            const matchesSnapshot = await db.collection('matches').orderBy('matchDate').get();
-            this.matches = matchesSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            
-            // 🔹 تحميل الإشعارات
-            const notificationsSnapshot = await db.collection('notifications').get();
-            this.notifications = notificationsSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            
-            this.renderData();
-            console.log('✅ تم تحميل البيانات من Firebase بنجاح');
-            
-        } catch (error) {
-            console.error('❌ خطأ في تحميل البيانات من Firebase:', error);
-            this.loadDataFromLocalStorage();
-        }
-    }
-
-    // 🔹 الدالة: loadDataFromLocalStorage()
-    // 🔹 الوظيفة: تحميل البيانات من التخزين المحلي
-    loadDataFromLocalStorage() {
-        try {
-            const savedSections = localStorage.getItem('bein_sections');
-            const savedChannels = localStorage.getItem('bein_channels');
-            const savedMatches = localStorage.getItem('bein_matches');
-            const savedNotifications = localStorage.getItem('bein_notifications');
-            
-            if (savedSections) this.sections = JSON.parse(savedSections);
-            if (savedChannels) this.channels = JSON.parse(savedChannels);
-            if (savedMatches) this.matches = JSON.parse(savedMatches);
-            if (savedNotifications) this.notifications = JSON.parse(savedNotifications);
-            
-            this.renderData();
-            console.log('📱 تم تحميل البيانات من التخزين المحلي');
-            
-        } catch (error) {
-            console.error('❌ خطأ في تحميل البيانات المحلية:', error);
-        }
-    }
+    // ============================================
+    // الجزء 6: دوال التعبئة والعرض
+    // ============================================
 
     // 🔹 الدالة: renderData()
-    // 🔹 الوظيفة: عرض جميع البيانات
+    // 🔹 الوظيفة: عرض جميع البيانات في الواجهة
+    // 🔹 الاستخدام: بعد تحميل البيانات
     renderData() {
-        this.renderSectionsList();
-        this.renderChannelsList();
-        this.renderMatchesList();
-        this.renderNotificationsList();
-        this.updateStats();
-        this.populateDropdowns();
+        this.renderSectionsList();                     // 🔹 عرض قائمة الأقسام
+        this.renderChannelsList();                     // 🔹 عرض قائمة القنوات
+        this.renderMatchesList();                      // 🔹 عرض قائمة المباريات
+        this.renderNotificationsList();                // 🔹 عرض قائمة الإشعارات
+        this.updateStats();                            // 🔹 تحديث الإحصائيات
+        this.populateDropdowns();                      // 🔹 تعبئة القوائم المنسدلة
     }
 
     // 🔹 الدالة: populateDropdowns()
-    // 🔹 الوظيفة: تعبئة القوائم المنسدلة
+    // 🔹 الوظيفة: تعبئة جميع القوائم المنسدلة
+    // 🔹 الاستخدام: بعد تحميل البيانات
     populateDropdowns() {
-        this.populateSectionDropdown();
-        this.populateChannelDropdown();
+        this.populateSectionDropdown();                // 🔹 تعبئة قائمة الأقسام للقنوات
+        this.populateChannelDropdown();                // 🔹 تعبئة قائمة القنوات للمباريات (الحل هنا)
     }
 
     // 🔹 الدالة: populateSectionDropdown()
-    // 🔹 الوظيفة: تعبئة قائمة الأقسام
+    // 🔹 الوظيفة: تعبئة قائمة الأقسام في نموذج القنوات
+    // 🔹 الاستخدام: عند إضافة قناة جديدة
     populateSectionDropdown() {
         const dropdown = document.getElementById('channelSection');
         if (!dropdown) return;
@@ -778,7 +773,8 @@ class AdminManager {
     }
 
     // 🔹 الدالة: populateChannelDropdown()
-    // 🔹 الوظيفة: تعبئة قائمة القنوات للمباريات
+    // 🔹 الوظيفة: تعبئة قائمة القنوات في نموذج المباريات (هذا هو الحل)
+    // 🔹 الاستخدام: عند إضافة مباراة جديدة
     populateChannelDropdown() {
         const dropdown = document.getElementById('matchChannel');
         if (!dropdown) {
@@ -791,6 +787,7 @@ class AdminManager {
         
         dropdown.innerHTML = '<option value="">اختر القناة الناقلة</option>';
         
+        // 🔹 ترتيب القنوات حسب الاسم
         const sortedChannels = [...this.channels].sort((a, b) => {
             return a.name.localeCompare(b.name);
         });
@@ -805,8 +802,13 @@ class AdminManager {
         console.log('✅ تم تعبئة قائمة القنوات بـ ' + sortedChannels.length + ' قناة');
     }
 
+    // ============================================
+    // الجزء 7: دوال عرض القوائم
+    // ============================================
+
     // 🔹 الدالة: renderSectionsList()
     // 🔹 الوظيفة: عرض قائمة الأقسام
+    // 🔹 الاستخدام: في renderData()
     renderSectionsList() {
         const container = document.getElementById('sectionsList');
         const countElement = document.getElementById('sectionsCount');
@@ -856,6 +858,7 @@ class AdminManager {
 
     // 🔹 الدالة: renderChannelsList()
     // 🔹 الوظيفة: عرض قائمة القنوات
+    // 🔹 الاستخدام: في renderData()
     renderChannelsList() {
         const container = document.getElementById('channelsList');
         const countElement = document.getElementById('channelsCount');
@@ -910,6 +913,7 @@ class AdminManager {
 
     // 🔹 الدالة: renderMatchesList()
     // 🔹 الوظيفة: عرض قائمة المباريات
+    // 🔹 الاستخدام: في renderData()
     renderMatchesList() {
         const container = document.getElementById('matchesList');
         const countElement = document.getElementById('matchesCount');
@@ -970,6 +974,7 @@ class AdminManager {
 
     // 🔹 الدالة: renderNotificationsList()
     // 🔹 الوظيفة: عرض قائمة الإشعارات
+    // 🔹 الاستخدام: في renderData()
     renderNotificationsList() {
         const container = document.getElementById('notificationsList');
         const countElement = document.getElementById('notificationsCount');
@@ -1019,24 +1024,601 @@ class AdminManager {
         if (countElement) countElement.textContent = this.notifications.length;
     }
 
+    // ============================================
+    // الجزء 8: دوال تحديث الإحصائيات
+    // ============================================
+
     // 🔹 الدالة: updateStats()
-    // 🔹 الوظيفة: تحديث الإحصائيات
+    // 🔹 الوظيفة: تحديث الإحصائيات العامة
+    // 🔹 الاستخدام: في renderData()
     updateStats() {
-        document.getElementById('totalSections').textContent = this.sections.length;
-        document.getElementById('totalChannels').textContent = this.channels.length;
-        document.getElementById('totalMatches').textContent = this.matches.length;
+        // 🔹 تحديث عدد الأقسام
+        const totalSections = document.getElementById('totalSections');
+        if (totalSections) totalSections.textContent = this.sections.length;
         
-        const activeNotifications = this.notifications.filter(n => n.status === 'active').length;
-        document.getElementById('activeNotifications').textContent = activeNotifications;
+        // 🔹 تحديث عدد القنوات
+        const totalChannels = document.getElementById('totalChannels');
+        if (totalChannels) totalChannels.textContent = this.channels.length;
+        
+        // 🔹 تحديث عدد المباريات
+        const totalMatches = document.getElementById('totalMatches');
+        if (totalMatches) totalMatches.textContent = this.matches.length;
+        
+        // 🔹 تحديث عدد الإشعارات النشطة
+        const activeNotifications = document.getElementById('activeNotifications');
+        if (activeNotifications) {
+            const activeCount = this.notifications.filter(n => n.status === 'active').length;
+            activeNotifications.textContent = activeCount;
+        }
     }
+
+    // ============================================
+    // الجزء 9: دوال إدارة الأقسام
+    // ============================================
+
+    // 🔹 الدالة: saveSection()
+    // 🔹 الوظيفة: حفظ قسم (إضافة أو تعديل)
+    // 🔹 الاستخدام: عند إرسال نموذج القسم
+    async saveSection(event) {
+        event.preventDefault();
+        
+        const sectionData = {
+            name: document.getElementById('sectionName').value,
+            order: parseInt(document.getElementById('sectionOrder').value),
+            isActive: document.getElementById('sectionStatus').value === 'active',
+            description: document.getElementById('sectionDescription').value,
+            image: document.getElementById('sectionImage').value,
+            updatedAt: new Date()
+        };
+        
+        const sectionId = document.getElementById('sectionId').value;
+        
+        try {
+            if (sectionId) {
+                // 🔹 تحديث قسم موجود
+                if (this.firestoreAvailable) {
+                    const db = this.getDB();
+                    await db.collection('sections').doc(sectionId).update(sectionData);
+                }
+                
+                const index = this.sections.findIndex(s => s.id === sectionId);
+                if (index !== -1) {
+                    this.sections[index] = { ...this.sections[index], ...sectionData };
+                }
+                
+                this.showAlert('تم تحديث القسم بنجاح', 'success');
+            } else {
+                // 🔹 إضافة قسم جديد
+                sectionData.createdAt = new Date();
+                let newSectionId;
+                
+                if (this.firestoreAvailable) {
+                    const db = this.getDB();
+                    const docRef = await db.collection('sections').add(sectionData);
+                    newSectionId = docRef.id;
+                } else {
+                    newSectionId = 'local_' + Date.now();
+                    sectionData.id = newSectionId;
+                }
+                
+                this.sections.push({
+                    id: newSectionId,
+                    ...sectionData
+                });
+                
+                this.showAlert('تم إضافة القسم بنجاح', 'success');
+            }
+            
+            this.saveToLocalStorage();
+            this.renderData();
+            this.resetSectionForm();
+            
+        } catch (error) {
+            console.error('❌ خطأ في حفظ القسم:', error);
+            this.showAlert('خطأ في حفظ القسم: ' + error.message, 'error');
+        }
+    }
+
+    // 🔹 الدالة: editSection()
+    // 🔹 الوظيفة: تحميل بيانات قسم للتعديل
+    // 🔹 الاستخدام: عند النقر على زر تعديل قسم
+    editSection(sectionId) {
+        const section = this.sections.find(s => s.id === sectionId);
+        if (!section) return;
+        
+        this.editingSection = section;
+        
+        document.getElementById('sectionId').value = section.id;
+        document.getElementById('sectionName').value = section.name;
+        document.getElementById('sectionOrder').value = section.order || 1;
+        document.getElementById('sectionStatus').value = section.isActive !== false ? 'active' : 'inactive';
+        document.getElementById('sectionDescription').value = section.description || '';
+        document.getElementById('sectionImage').value = section.image || '';
+        
+        document.getElementById('sectionFormTitle').textContent = 'تعديل القسم';
+        document.getElementById('sectionSaveButton').textContent = 'تحديث القسم';
+        document.getElementById('cancelSectionEdit').style.display = 'block';
+    }
+
+    // 🔹 الدالة: cancelEditSection()
+    // 🔹 الوظيفة: إلغاء تعديل قسم
+    // 🔹 الاستخدام: عند النقر على زر إلغاء
+    cancelEditSection() {
+        this.editingSection = null;
+        this.resetSectionForm();
+    }
+
+    // 🔹 الدالة: resetSectionForm()
+    // 🔹 الوظيفة: إعادة تعيين نموذج القسم
+    // 🔹 الاستخدام: بعد الحفظ أو الإلغاء
+    resetSectionForm() {
+        document.getElementById('sectionForm').reset();
+        document.getElementById('sectionId').value = '';
+        document.getElementById('sectionFormTitle').textContent = 'إضافة قسم جديد';
+        document.getElementById('sectionSaveButton').textContent = 'حفظ القسم';
+        document.getElementById('cancelSectionEdit').style.display = 'none';
+    }
+
+    // 🔹 الدالة: deleteSection()
+    // 🔹 الوظيفة: حذف قسم
+    // 🔹 الاستخدام: عند النقر على زر حذف قسم
+    async deleteSection(sectionId) {
+        if (!confirm('هل أنت متأكد من حذف هذا القسم؟')) return;
+        
+        try {
+            if (this.firestoreAvailable) {
+                const db = this.getDB();
+                await db.collection('sections').doc(sectionId).delete();
+            }
+            
+            this.sections = this.sections.filter(s => s.id !== sectionId);
+            this.saveToLocalStorage();
+            this.renderData();
+            
+            this.showAlert('تم حذف القسم بنجاح', 'success');
+            
+        } catch (error) {
+            console.error('❌ خطأ في حذف القسم:', error);
+            this.showAlert('خطأ في حذف القسم: ' + error.message, 'error');
+        }
+    }
+
+    // ============================================
+    // الجزء 10: دوال إدارة القنوات
+    // ============================================
+
+    // 🔹 الدالة: saveChannel()
+    // 🔹 الوظيفة: حفظ قناة (إضافة أو تعديل)
+    // 🔹 الاستخدام: عند إرسال نموذج القناة
+    async saveChannel(event) {
+        event.preventDefault();
+        
+        const channelData = {
+            name: document.getElementById('channelName').value,
+            image: document.getElementById('channelImage').value,
+            url: document.getElementById('channelUrl').value,
+            sectionId: document.getElementById('channelSection').value,
+            order: parseInt(document.getElementById('channelOrder').value) || 1,
+            appUrl: document.getElementById('channelAppUrl').value,
+            updatedAt: new Date()
+        };
+        
+        const channelId = document.getElementById('channelId').value;
+        
+        try {
+            if (channelId) {
+                // 🔹 تحديث قناة موجودة
+                if (this.firestoreAvailable) {
+                    const db = this.getDB();
+                    await db.collection('channels').doc(channelId).update(channelData);
+                }
+                
+                const index = this.channels.findIndex(c => c.id === channelId);
+                if (index !== -1) {
+                    this.channels[index] = { ...this.channels[index], ...channelData };
+                }
+                
+                this.showAlert('تم تحديث القناة بنجاح', 'success');
+            } else {
+                // 🔹 إضافة قناة جديدة
+                channelData.createdAt = new Date();
+                let newChannelId;
+                
+                if (this.firestoreAvailable) {
+                    const db = this.getDB();
+                    const docRef = await db.collection('channels').add(channelData);
+                    newChannelId = docRef.id;
+                } else {
+                    newChannelId = 'local_' + Date.now();
+                    channelData.id = newChannelId;
+                }
+                
+                this.channels.push({
+                    id: newChannelId,
+                    ...channelData
+                });
+                
+                this.showAlert('تم إضافة القناة بنجاح', 'success');
+            }
+            
+            this.saveToLocalStorage();
+            this.renderData();
+            this.resetChannelForm();
+            
+        } catch (error) {
+            console.error('❌ خطأ في حفظ القناة:', error);
+            this.showAlert('خطأ في حفظ القناة: ' + error.message, 'error');
+        }
+    }
+
+    // 🔹 الدالة: editChannel()
+    // 🔹 الوظيفة: تحميل بيانات قناة للتعديل
+    // 🔹 الاستخدام: عند النقر على زر تعديل قناة
+    editChannel(channelId) {
+        const channel = this.channels.find(c => c.id === channelId);
+        if (!channel) return;
+        
+        this.editingChannel = channel;
+        
+        document.getElementById('channelId').value = channel.id;
+        document.getElementById('channelName').value = channel.name;
+        document.getElementById('channelImage').value = channel.image || '';
+        document.getElementById('channelUrl').value = channel.url || '';
+        document.getElementById('channelSection').value = channel.sectionId || '';
+        document.getElementById('channelOrder').value = channel.order || 1;
+        document.getElementById('channelAppUrl').value = channel.appUrl || '';
+        
+        document.getElementById('channelFormTitle').textContent = 'تعديل القناة';
+        document.getElementById('channelSaveButton').textContent = 'تحديث القناة';
+        document.getElementById('cancelChannelEdit').style.display = 'block';
+    }
+
+    // 🔹 الدالة: cancelEditChannel()
+    // 🔹 الوظيفة: إلغاء تعديل قناة
+    // 🔹 الاستخدام: عند النقر على زر إلغاء
+    cancelEditChannel() {
+        this.editingChannel = null;
+        this.resetChannelForm();
+    }
+
+    // 🔹 الدالة: resetChannelForm()
+    // 🔹 الوظيفة: إعادة تعيين نموذج القناة
+    // 🔹 الاستخدام: بعد الحفظ أو الإلغاء
+    resetChannelForm() {
+        document.getElementById('channelForm').reset();
+        document.getElementById('channelId').value = '';
+        document.getElementById('channelFormTitle').textContent = 'إضافة قناة جديدة';
+        document.getElementById('channelSaveButton').textContent = 'حفظ القناة';
+        document.getElementById('cancelChannelEdit').style.display = 'none';
+        document.getElementById('channelAppUrl').value = 'https://play.google.com/store/apps/details?id=com.xpola.player';
+    }
+
+    // 🔹 الدالة: deleteChannel()
+    // 🔹 الوظيفة: حذف قناة
+    // 🔹 الاستخدام: عند النقر على زر حذف قناة
+    async deleteChannel(channelId) {
+        if (!confirm('هل أنت متأكد من حذف هذه القناة؟')) return;
+        
+        try {
+            if (this.firestoreAvailable) {
+                const db = this.getDB();
+                await db.collection('channels').doc(channelId).delete();
+            }
+            
+            this.channels = this.channels.filter(c => c.id !== channelId);
+            this.saveToLocalStorage();
+            this.renderData();
+            
+            this.showAlert('تم حذف القناة بنجاح', 'success');
+            
+        } catch (error) {
+            console.error('❌ خطأ في حذف القناة:', error);
+            this.showAlert('خطأ في حذف القناة: ' + error.message, 'error');
+        }
+    }
+
+    // ============================================
+    // الجزء 11: دوال إدارة المباريات
+    // ============================================
+
+    // 🔹 الدالة: saveMatch()
+    // 🔹 الوظيفة: حفظ مباراة (إضافة أو تعديل)
+    // 🔹 الاستخدام: عند إرسال نموذج المباراة
+    async saveMatch(event) {
+        event.preventDefault();
+        console.log('💾 بدء حفظ المباراة...');
+        
+        const matchData = {
+            team1: document.getElementById('team1').value,
+            team2: document.getElementById('team2').value,
+            competition: document.getElementById('competition').value,
+            matchDate: document.getElementById('matchDate').value,
+            matchTime: document.getElementById('matchTime').value,
+            channelId: document.getElementById('matchChannel').value, // 🔹 هذا هو الحقل المهم
+            status: document.getElementById('matchStatus').value,
+            updatedAt: new Date()
+        };
+        
+        console.log('📋 بيانات المباراة:', matchData);
+        
+        // 🔹 التحقق من اختيار قناة
+        if (!matchData.channelId) {
+            this.showAlert('يرجى اختيار القناة الناقلة', 'error');
+            return;
+        }
+        
+        const matchId = document.getElementById('matchId').value;
+        
+        try {
+            if (matchId) {
+                // 🔹 تحديث مباراة موجودة
+                console.log('✏️ تحديث مباراة موجودة:', matchId);
+                
+                if (this.firestoreAvailable) {
+                    const db = this.getDB();
+                    await db.collection('matches').doc(matchId).update(matchData);
+                }
+                
+                const index = this.matches.findIndex(m => m.id === matchId);
+                if (index !== -1) {
+                    this.matches[index] = { ...this.matches[index], ...matchData };
+                }
+                
+                this.showAlert('تم تحديث المباراة بنجاح', 'success');
+            } else {
+                // 🔹 إضافة مباراة جديدة
+                console.log('➕ إضافة مباراة جديدة');
+                
+                matchData.createdAt = new Date();
+                let newMatchId;
+                
+                if (this.firestoreAvailable) {
+                    const db = this.getDB();
+                    const docRef = await db.collection('matches').add(matchData);
+                    newMatchId = docRef.id;
+                } else {
+                    newMatchId = 'local_' + Date.now();
+                    matchData.id = newMatchId;
+                }
+                
+                this.matches.push({
+                    id: newMatchId,
+                    ...matchData
+                });
+                
+                this.showAlert('تم إضافة المباراة بنجاح', 'success');
+            }
+            
+            this.saveToLocalStorage();
+            this.renderData();
+            this.resetMatchForm();
+            
+        } catch (error) {
+            console.error('❌ خطأ في حفظ المباراة:', error);
+            this.showAlert('خطأ في حفظ المباراة: ' + error.message, 'error');
+        }
+    }
+
+    // 🔹 الدالة: editMatch()
+    // 🔹 الوظيفة: تحميل بيانات مباراة للتعديل
+    // 🔹 الاستخدام: عند النقر على زر تعديل مباراة
+    editMatch(matchId) {
+        const match = this.matches.find(m => m.id === matchId);
+        if (!match) return;
+        
+        this.editingMatch = match;
+        
+        console.log('✏️ تحميل مباراة للتعديل:', match);
+        
+        document.getElementById('matchId').value = match.id;
+        document.getElementById('team1').value = match.team1;
+        document.getElementById('team2').value = match.team2;
+        document.getElementById('competition').value = match.competition;
+        document.getElementById('matchDate').value = match.matchDate;
+        document.getElementById('matchTime').value = match.matchTime;
+        document.getElementById('matchChannel').value = match.channelId; // 🔹 هنا يتم تعيين القناة
+        document.getElementById('matchStatus').value = match.status || 'upcoming';
+        
+        document.getElementById('matchFormTitle').textContent = 'تعديل المباراة';
+        document.getElementById('matchSaveButton').textContent = 'تحديث المباراة';
+        document.getElementById('cancelMatchEdit').style.display = 'block';
+        
+        console.log('✅ تم تحميل بيانات المباراة، القناة المختارة:', match.channelId);
+    }
+
+    // 🔹 الدالة: cancelEditMatch()
+    // 🔹 الوظيفة: إلغاء تعديل مباراة
+    // 🔹 الاستخدام: عند النقر على زر إلغاء
+    cancelEditMatch() {
+        this.editingMatch = null;
+        this.resetMatchForm();
+    }
+
+    // 🔹 الدالة: resetMatchForm()
+    // 🔹 الوظيفة: إعادة تعيين نموذج المباراة
+    // 🔹 الاستخدام: بعد الحفظ أو الإلغاء
+    resetMatchForm() {
+        document.getElementById('matchForm').reset();
+        document.getElementById('matchId').value = '';
+        document.getElementById('matchFormTitle').textContent = 'إضافة مباراة جديدة';
+        document.getElementById('matchSaveButton').textContent = 'حفظ المباراة';
+        document.getElementById('cancelMatchEdit').style.display = 'none';
+        document.getElementById('matchStatus').value = 'upcoming';
+        
+        // 🔹 تعيين تاريخ اليوم كتاريخ افتراضي
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('matchDate').value = today;
+    }
+
+    // 🔹 الدالة: deleteMatch()
+    // 🔹 الوظيفة: حذف مباراة
+    // 🔹 الاستخدام: عند النقر على زر حذف مباراة
+    async deleteMatch(matchId) {
+        if (!confirm('هل أنت متأكد من حذف هذه المباراة؟')) return;
+        
+        try {
+            if (this.firestoreAvailable) {
+                const db = this.getDB();
+                await db.collection('matches').doc(matchId).delete();
+            }
+            
+            this.matches = this.matches.filter(m => m.id !== matchId);
+            this.saveToLocalStorage();
+            this.renderData();
+            
+            this.showAlert('تم حذف المباراة بنجاح', 'success');
+            
+        } catch (error) {
+            console.error('❌ خطأ في حذف المباراة:', error);
+            this.showAlert('خطأ في حذف المباراة: ' + error.message, 'error');
+        }
+    }
+
+    // ============================================
+    // الجزء 12: دوال إدارة الإشعارات
+    // ============================================
+
+    // 🔹 الدالة: saveNotification()
+    // 🔹 الوظيفة: حفظ إشعار (إضافة أو تعديل)
+    // 🔹 الاستخدام: عند إرسال نموذج الإشعار
+    async saveNotification(event) {
+        event.preventDefault();
+        
+        const notificationData = {
+            title: document.getElementById('notificationTitle').value,
+            message: document.getElementById('notificationMessage').value,
+            type: document.getElementById('notificationType').value,
+            status: document.getElementById('notificationStatus').value,
+            updatedAt: new Date()
+        };
+        
+        const notificationId = document.getElementById('notificationId').value;
+        
+        try {
+            if (notificationId) {
+                // 🔹 تحديث إشعار موجود
+                if (this.firestoreAvailable) {
+                    const db = this.getDB();
+                    await db.collection('notifications').doc(notificationId).update(notificationData);
+                }
+                
+                const index = this.notifications.findIndex(n => n.id === notificationId);
+                if (index !== -1) {
+                    this.notifications[index] = { ...this.notifications[index], ...notificationData };
+                }
+                
+                this.showAlert('تم تحديث الإشعار بنجاح', 'success');
+            } else {
+                // 🔹 إضافة إشعار جديد
+                notificationData.createdAt = new Date();
+                let newNotificationId;
+                
+                if (this.firestoreAvailable) {
+                    const db = this.getDB();
+                    const docRef = await db.collection('notifications').add(notificationData);
+                    newNotificationId = docRef.id;
+                } else {
+                    newNotificationId = 'local_' + Date.now();
+                    notificationData.id = newNotificationId;
+                }
+                
+                this.notifications.push({
+                    id: newNotificationId,
+                    ...notificationData
+                });
+                
+                this.showAlert('تم إرسال الإشعار بنجاح', 'success');
+            }
+            
+            this.saveToLocalStorage();
+            this.renderData();
+            this.resetNotificationForm();
+            
+        } catch (error) {
+            console.error('❌ خطأ في حفظ الإشعار:', error);
+            this.showAlert('خطأ في حفظ الإشعار: ' + error.message, 'error');
+        }
+    }
+
+    // 🔹 الدالة: editNotification()
+    // 🔹 الوظيفة: تحميل بيانات إشعار للتعديل
+    // 🔹 الاستخدام: عند النقر على زر تعديل إشعار
+    editNotification(notificationId) {
+        const notification = this.notifications.find(n => n.id === notificationId);
+        if (!notification) return;
+        
+        this.editingNotification = notification;
+        
+        document.getElementById('notificationId').value = notification.id;
+        document.getElementById('notificationTitle').value = notification.title;
+        document.getElementById('notificationMessage').value = notification.message;
+        document.getElementById('notificationType').value = notification.type || 'info';
+        document.getElementById('notificationStatus').value = notification.status || 'active';
+        
+        document.getElementById('notificationFormTitle').textContent = 'تعديل الإشعار';
+        document.getElementById('notificationSaveButton').textContent = 'تحديث الإشعار';
+        document.getElementById('cancelNotificationEdit').style.display = 'block';
+    }
+
+    // 🔹 الدالة: cancelEditNotification()
+    // 🔹 الوظيفة: إلغاء تعديل إشعار
+    // 🔹 الاستخدام: عند النقر على زر إلغاء
+    cancelEditNotification() {
+        this.editingNotification = null;
+        this.resetNotificationForm();
+    }
+
+    // 🔹 الدالة: resetNotificationForm()
+    // 🔹 الوظيفة: إعادة تعيين نموذج الإشعار
+    // 🔹 الاستخدام: بعد الحفظ أو الإلغاء
+    resetNotificationForm() {
+        document.getElementById('notificationForm').reset();
+        document.getElementById('notificationId').value = '';
+        document.getElementById('notificationFormTitle').textContent = 'إرسال إشعار جديد';
+        document.getElementById('notificationSaveButton').textContent = 'إرسال الإشعار';
+        document.getElementById('cancelNotificationEdit').style.display = 'none';
+        document.getElementById('notificationType').value = 'info';
+        document.getElementById('notificationStatus').value = 'active';
+    }
+
+    // 🔹 الدالة: deleteNotification()
+    // 🔹 الوظيفة: حذف إشعار
+    // 🔹 الاستخدام: عند النقر على زر حذف إشعار
+    async deleteNotification(notificationId) {
+        if (!confirm('هل أنت متأكد من حذف هذا الإشعار؟')) return;
+        
+        try {
+            if (this.firestoreAvailable) {
+                const db = this.getDB();
+                await db.collection('notifications').doc(notificationId).delete();
+            }
+            
+            this.notifications = this.notifications.filter(n => n.id !== notificationId);
+            this.saveToLocalStorage();
+            this.renderData();
+            
+            this.showAlert('تم حذف الإشعار بنجاح', 'success');
+            
+        } catch (error) {
+            console.error('❌ خطأ في حذف الإشعار:', error);
+            this.showAlert('خطأ في حذف الإشعار: ' + error.message, 'error');
+        }
+    }
+
+    // ============================================
+    // الجزء 13: دوال مساعدة
+    // ============================================
 
     // 🔹 الدالة: setupTabsEvents()
     // 🔹 الوظيفة: إعداد أحداث التبويبات
+    // 🔹 الاستخدام: عند تحميل واجهة لوحة التحكم
     setupTabsEvents() {
         const tabs = document.querySelectorAll('#adminTabs .nav-link');
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
+                // 🔹 عند النقر على تبويب المباريات، قم بتعبئة القائمة المنسدلة
                 if (tab.getAttribute('href') === '#matchesTab') {
+                    console.log('📋 تم النقر على تبويب المباريات، جاري تحديث القنوات...');
                     setTimeout(() => {
                         this.populateChannelDropdown();
                     }, 100);
@@ -1047,6 +1629,7 @@ class AdminManager {
 
     // 🔹 الدالة: showAlert()
     // 🔹 الوظيفة: عرض رسالة تنبيه
+    // 🔹 الاستخدام: عند نجاح أو فشل عملية
     showAlert(message, type) {
         const alertDiv = document.createElement('div');
         alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
@@ -1067,101 +1650,37 @@ class AdminManager {
         }, 5000);
     }
 
+    // 🔹 الدالة: retryFirebaseConnection()
+    // 🔹 الوظيفة: إعادة محاولة الاتصال بـ Firebase
+    // 🔹 الاستخدام: عند النقر على زر إعادة المحاولة
+    async retryFirebaseConnection() {
+        this.showFirebaseStatus('جاري إعادة الاتصال بقاعدة البيانات...', 'warning');
+        await this.checkFirebase();
+        
+        if (this.firestoreAvailable) {
+            await this.loadDataFromFirestore();
+        }
+    }
+
     // 🔹 الدالة: logout()
     // 🔹 الوظيفة: تسجيل الخروج
+    // 🔹 الاستخدام: عند النقر على زر تسجيل الخروج
     logout() {
+        localStorage.removeItem('adminAuth');
+        localStorage.removeItem('adminEmail');
         localStorage.removeItem('isAdmin');
         localStorage.removeItem('user');
         window.location.href = 'index.html';
     }
-
-    // 🔹 دوال الحفظ (مبسطة للتوضيح)
-    async saveSection(event) {
-        event.preventDefault();
-        this.showAlert('تم حفظ القسم بنجاح', 'success');
-    }
-
-    async saveChannel(event) {
-        event.preventDefault();
-        this.showAlert('تم حفظ القناة بنجاح', 'success');
-    }
-
-    async saveMatch(event) {
-        event.preventDefault();
-        this.showAlert('تم حفظ المباراة بنجاح', 'success');
-    }
-
-    async saveNotification(event) {
-        event.preventDefault();
-        this.showAlert('تم حفظ الإشعار بنجاح', 'success');
-    }
-
-    // 🔹 دوال التعديل (مبسطة للتوضيح)
-    editSection(sectionId) {
-        console.log('تعديل قسم:', sectionId);
-        this.showAlert('جاري تحميل بيانات القسم للتعديل', 'info');
-    }
-
-    editChannel(channelId) {
-        console.log('تعديل قناة:', channelId);
-        this.showAlert('جاري تحميل بيانات القناة للتعديل', 'info');
-    }
-
-    editMatch(matchId) {
-        console.log('تعديل مباراة:', matchId);
-        this.showAlert('جاري تحميل بيانات المباراة للتعديل', 'info');
-    }
-
-    editNotification(notificationId) {
-        console.log('تعديل إشعار:', notificationId);
-        this.showAlert('جاري تحميل بيانات الإشعار للتعديل', 'info');
-    }
-
-    // 🔹 دوال الإلغاء (مبسطة للتوضيح)
-    cancelEditSection() {
-        this.showAlert('تم إلغاء التعديل', 'info');
-    }
-
-    cancelEditChannel() {
-        this.showAlert('تم إلغاء التعديل', 'info');
-    }
-
-    cancelEditMatch() {
-        this.showAlert('تم إلغاء التعديل', 'info');
-    }
-
-    cancelEditNotification() {
-        this.showAlert('تم إلغاء التعديل', 'info');
-    }
-
-    // 🔹 دوال الحذف (مبسطة للتوضيح)
-    async deleteSection(sectionId) {
-        if (confirm('هل أنت متأكد من حذف هذا القسم؟')) {
-            this.showAlert('تم حذف القسم بنجاح', 'success');
-        }
-    }
-
-    async deleteChannel(channelId) {
-        if (confirm('هل أنت متأكد من حذف هذه القناة؟')) {
-            this.showAlert('تم حذف القناة بنجاح', 'success');
-        }
-    }
-
-    async deleteMatch(matchId) {
-        if (confirm('هل أنت متأكد من حذف هذه المباراة؟')) {
-            this.showAlert('تم حذف المباراة بنجاح', 'success');
-        }
-    }
-
-    async deleteNotification(notificationId) {
-        if (confirm('هل أنت متأكد من حذف هذا الإشعار؟')) {
-            this.showAlert('تم حذف الإشعار بنجاح', 'success');
-        }
-    }
 }
 
-// 🔹 تهيئة النظام عند تحميل الصفحة
+// ============================================
+// الجزء 14: تهيئة النظام
+// ============================================
+
+// 🔹 الحدث: DOMContentLoaded
+// 🔹 الوظيفة: بدء النظام عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('📄 تم تحميل صفحة لوحة التحكم');
+    console.log('🔧 بدء تشغيل لوحة التحكم...');
     window.adminManager = new AdminManager();
 });
