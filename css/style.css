@@ -115,23 +115,28 @@ header {
 }
 
 .page-title, .section-title {
-    text-align: center;
-    position: fixed;
+	position: fixed;
     overflow: hidden;
     display: flex;
     align-items: center;
     display: inline-block;
-    position: fixed;
-    top: 80px;
-    width: 100%;
     background-image: linear-gradient(to right, #151825, #3A4266, #3A4266, #3A4266, #3A4266, #151825);
-    padding: 1px 12px;
     border-radius: 0px;
-    margin: 0 auto 20px;
-    color: white;
-    font-size: 1.4rem;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    max-width: 90%;
+    top: 72px;
+    left: 0;
+    right: 0;
+    width: 90%;
+    padding: 5px;
+    z-index: 999;
+    margin: 0 auto 100px;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    border: 0px solid rgba(255, 255, 255, 0.1);
+    font-size: 16px;
+    color: #b8d4f5; 
 }
 
 .welcome-message, .section-description {
@@ -146,7 +151,7 @@ header {
     left: 0;
     right: 0;
     width: 90%;
-    padding: 15px;
+    padding-bottom: 25px;
     z-index: 999;
     margin: 0 auto 100px;
     overflow: hidden;
